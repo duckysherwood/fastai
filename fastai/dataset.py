@@ -358,57 +358,57 @@ class ArraysNhotDataset(ArraysDataset):
 
 class ModelData():
 
-    def __init__(self, path, trn_dl, val_dl, test_dl=None):
-        self.path, self.trn_dl, self.val_dl, self.test_dl = path, trn_dl, val_dl, test_dl
+    def __init__(self, path, training_downloader, validation_downloader, test_downloader=None):
+        self.path, self.training_downloader, self.validation_downloader, self.test_downloader = path, training_downloader, validation_downloader, test_downloader
 
     @classmethod
-    def from_dls(cls, path, trn_dl, val_dl, test_dl=None):
-        # trn_dl,val_dl = DataLoader(trn_dl),DataLoader(val_dl)
-        # if test_dl: test_dl = DataLoader(test_dl)
-        return cls(path, trn_dl, val_dl, test_dl)
+    def from_dls(cls, path, training_downloader, validation_downloader, test_downloader=None):
+        # training_downloader,validation_downloader = DataLoader(training_downloader),DataLoader(validation_downloader)
+        # if test_downloader: test_downloader = DataLoader(test_downloader)
+        return cls(path, training_downloader, validation_downloader, test_downloader)
 
     @property
     def is_reg(self):
-        return self.trn_ds.is_reg
+        return self.training_dataset.is_reg
 
     @property
     def is_multi(self):
-        return self.trn_ds.is_multi
+        return self.training_dataset.is_multi
 
     @property
-    def trn_ds(self):
-        return self.trn_dl.dataset
+    def training_dataset(self):
+        return self.training_downloader.dataset
 
     @property
-    def val_ds(self):
-        return self.val_dl.dataset
+    def validation_dataset(self):
+        return self.validation_downloader.dataset
 
     @property
-    def test_ds(self):
-        return self.test_dl.dataset
+    def test_dataset(self):
+        return self.test_downloader.dataset
 
     @property
     def trn_y(self):
-        return self.trn_ds.y
+        return self.training_dataset.y
 
     @property
     def val_y(self):
-        return self.val_ds.y
+        return self.validation_dataset.y
 
 
 class ImageData(ModelData):
 
     def __init__(self, path, datasets, batch_size, num_workers, classes):
-        trn_ds, val_ds, fix_ds, aug_ds, test_ds, test_aug_ds = datasets
+        training_dataset, validation_dataset, fix_ds, aug_ds, test_dataset, test_aug_ds = datasets
         self.path, self.batch_size, self.num_workers, self.classes = path, batch_size, num_workers, classes
-        self.trn_dl, self.val_dl, self.fix_dl, self.aug_dl, self.test_dl, self.test_aug_dl = [
+        self.training_downloader, self.validation_downloader, self.fix_dl, self.aug_dl, self.test_downloader, self.test_aug_dl = [
             self.get_dl(ds, shuf)
             for ds, shuf in [
-                (trn_ds, True),
-                (val_ds, False),
+                (training_dataset, True),
+                (validation_dataset, False),
                 (fix_ds, False),
                 (aug_ds, False),
-                (test_ds, False),
+                (test_dataset, False),
                 (test_aug_ds, False),
             ]
         ]
@@ -426,20 +426,20 @@ class ImageData(ModelData):
 
     @property
     def get_image_size(self):
-        return self.trn_ds.get_image_size
+        return self.training_dataset.get_image_size
 
     @property
     def c(self):
-        return self.trn_ds.c
+        return self.training_dataset.c
 
     def resized(self, dl, targ, new_path):
         return dl.dataset.resize_imgs(targ, new_path) if dl else None
 
     def resize(self, targ_get_image_size, new_path="tmp"):
         new_ds = []
-        dls = [self.trn_dl, self.val_dl, self.fix_dl, self.aug_dl]
-        if self.test_dl:
-            dls += [self.test_dl, self.test_aug_dl]
+        dls = [self.training_downloader, self.validation_downloader, self.fix_dl, self.aug_dl]
+        if self.test_downloader:
+            dls += [self.test_downloader, self.test_aug_dl]
         else:
             dls += [None, None]
         t = tqdm_notebook(dls)

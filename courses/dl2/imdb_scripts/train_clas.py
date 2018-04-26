@@ -79,24 +79,24 @@ def train_clas(
         itos = pickle.load(open(f"{PATH}tmp/itos.pkl", "rb"))
         vs = len(itos)
 
-    trn_ds = TextDataset(trn_sent, trn_lbls)
-    val_ds = TextDataset(val_sent, val_lbls)
+    training_dataset = TextDataset(trn_sent, trn_lbls)
+    validation_dataset = TextDataset(val_sent, val_lbls)
     trn_samp = SortishSampler(
         trn_sent, key=lambda x: len(trn_sent[x]), batch_size=batch_size // 2
     )
     val_samp = SortSampler(val_sent, key=lambda x: len(val_sent[x]))
-    trn_dl = DataLoader(
-        trn_ds,
+    training_downloader = DataLoader(
+        training_dataset,
         batch_size // 2,
         transpose=True,
         num_workers=1,
         pad_idx=1,
         sampler=trn_samp,
     )
-    val_dl = DataLoader(
-        val_ds, batch_size, transpose=True, num_workers=1, pad_idx=1, sampler=val_samp
+    validation_downloader = DataLoader(
+        validation_dataset, batch_size, transpose=True, num_workers=1, pad_idx=1, sampler=val_samp
     )
-    md = ModelData(PATH, trn_dl, val_dl)
+    md = ModelData(PATH, training_downloader, validation_downloader)
 
     dps = np.array([0.4, 0.5, 0.05, 0.3, 0.4]) * dropmult
     # dps = np.array([0.5, 0.4, 0.04, 0.3, 0.6])*dropmult

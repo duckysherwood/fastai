@@ -236,10 +236,10 @@ class LanguageModel(BasicModel):
 class LanguageModelData():
 
     def __init__(
-        self, path, pad_idx, n_tok, trn_dl, val_dl, test_dl=None, **kwargs
+        self, path, pad_idx, n_tok, training_downloader, validation_downloader, test_downloader=None, **kwargs
     ):
         self.path, self.pad_idx, self.n_tok = path, pad_idx, n_tok
-        self.trn_dl, self.val_dl, self.test_dl = trn_dl, val_dl, test_dl
+        self.training_downloader, self.validation_downloader, self.test_downloader = training_downloader, validation_downloader, test_downloader
 
     def get_model(self, opt_fn, embedding_size, n_hid, n_layers, **kwargs):
         m = get_language_model(

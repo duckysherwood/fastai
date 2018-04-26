@@ -99,16 +99,16 @@ class TextClassifierData(ModelData):
 
     @property
     def c(self):
-        return self.trn_ds.c
+        return self.training_dataset.c
 
     @property
     def r(self):
         return torch.Tensor(
-            np.concatenate([np.zeros((1, self.c)), self.trn_ds.r])
+            np.concatenate([np.zeros((1, self.c)), self.training_dataset.r])
         )
 
     def get_model(self, f, **kwargs):
-        m = to_gpu(f(self.trn_ds.vocab_size, self.c, **kwargs))
+        m = to_gpu(f(self.training_dataset.vocab_size, self.c, **kwargs))
         m.r.weight.data = to_gpu(self.r)
         m.r.weight.requires_grad = False
         model = BasicModel(m)
@@ -124,11 +124,11 @@ class TextClassifierData(ModelData):
 
     @classmethod
     def from_bow(cls, trn_bow, trn_y, val_bow, val_y, sl):
-        trn_ds = BOW_Dataset(trn_bow, trn_y, sl)
-        val_ds = BOW_Dataset(val_bow, val_y, sl)
-        trn_dl = DataLoader(trn_ds, 64, True)
-        val_dl = DataLoader(val_ds, 64, False)
-        return cls(".", trn_dl, val_dl)
+        training_dataset = BOW_Dataset(trn_bow, trn_y, sl)
+        validation_dataset = BOW_Dataset(val_bow, val_y, sl)
+        training_downloader = DataLoader(training_dataset, 64, True)
+        validation_downloader = DataLoader(validation_dataset, 64, False)
+        return cls(".", training_downloader, validation_downloader)
 
 
 def flip_tensor(x, dim):
@@ -288,9 +288,9 @@ class LanguageModelData():
         self,
         path,
         field,
-        trn_ds,
-        val_ds,
-        test_ds,
+        training_dataset,
+        validation_dataset,
+        test_dataset,
         batch_size,
         bptt,
         backwards=False,
@@ -301,26 +301,26 @@ class LanguageModelData():
             for this NLP model.
 
             Also, three instances of the LanguageModelLoader is constructed; one each
-            for training data (self.trn_dl), validation data (self.val_dl), and the
-            testing data (self.test_dl)
+            for training data (self.training_downloader), validation data (self.validation_downloader), and the
+            testing data (self.test_downloader)
 
             Args:
                 path (str): testing path
                 field (Field): torchtext field object
-                trn_ds (Dataset): training dataset
-                val_ds (Dataset): validation dataset
-                test_ds (Dataset): testing dataset
+                training_dataset (Dataset): training dataset
+                validation_dataset (Dataset): validation dataset
+                test_dataset (Dataset): testing dataset
                 batch_size (int): batch size
                 bptt (int): back propagation through time
                 kwargs: other arguments
         """
         self.batch_size = batch_size
         self.path = path
-        self.trn_ds = trn_ds
-        self.val_ds = val_ds
-        self.test_ds = test_ds
+        self.training_dataset = training_dataset
+        self.validation_dataset = validation_dataset
+        self.test_dataset = test_dataset
         if not hasattr(field, "vocab"):
-            field.build_vocab(self.trn_ds, **kwargs)
+            field.build_vocab(self.training_dataset, **kwargs)
 
         self.pad_idx = field.vocab.stoi[field.pad_token]
         self.nt = len(field.vocab)
@@ -328,9 +328,9 @@ class LanguageModelData():
         factory = lambda ds: LanguageModelLoader(
             ds, batch_size, bptt, backwards=backwards
         )
-        self.trn_dl = factory(self.trn_ds)
-        self.val_dl = factory(self.val_ds)
-        self.test_dl = map_none(self.test_ds, factory)  # not required
+        self.training_downloader = factory(self.training_dataset)
+        self.validation_downloader = factory(self.validation_dataset)
+        self.test_downloader = map_none(self.test_dataset, factory)  # not required
 
     def get_model(self, opt_fn, emb_unused_size, n_hid, n_layers, **kwargs):
         """ Method returns a RNN_Learner object, that wraps an instance of the RNN_Encoder module.
@@ -365,7 +365,7 @@ class LanguageModelData():
         bptt=70,
         **kwargs,
     ):
-        trn_ds, val_ds, test_ds = ConcatTextDatasetFromDataFrames.splits(
+        training_dataset, validation_dataset, test_dataset = ConcatTextDatasetFromDataFrames.splits(
             text_field=field,
             col=col,
             train_df=train_df,
@@ -373,7 +373,7 @@ class LanguageModelData():
             test_df=test_df,
             keep_nones=True,
         )
-        return cls(path, field, trn_ds, val_ds, test_ds, batch_size, bptt, **kwargs)
+        return cls(path, field, training_dataset, validation_dataset, test_dataset, batch_size, bptt, **kwargs)
 
     @classmethod
     def from_text_files(
@@ -409,14 +409,14 @@ class LanguageModelData():
                 text corpus.
 
         """
-        trn_ds, val_ds, test_ds = ConcatTextDataset.splits(
+        training_dataset, validation_dataset, test_dataset = ConcatTextDataset.splits(
             path,
             text_field=field,
             train=train,
             validation=validation,
             test=test,
         )
-        return cls(path, field, trn_ds, val_ds, test_ds, batch_size, bptt, **kwargs)
+        return cls(path, field, training_dataset, validation_dataset, test_dataset, batch_size, bptt, **kwargs)
 
 
 class TextDataLoader():
@@ -458,13 +458,13 @@ class TextData(ModelData):
             label_fld.build_vocab(splits[0])
         iters = torchtext.data.BucketIterator.splits(splits, batch_size=batch_size)
         trn_iter, val_iter, test_iter = iters[0], iters[1], None
-        test_dl = None
+        test_downloader = None
         if len(iters) == 3:
             test_iter = iters[2]
-            test_dl = TextDataLoader(test_iter, text_name, label_name)
-        trn_dl = TextDataLoader(trn_iter, text_name, label_name)
-        val_dl = TextDataLoader(val_iter, text_name, label_name)
-        obj = cls.from_dls(path, trn_dl, val_dl, test_dl)
+            test_downloader = TextDataLoader(test_iter, text_name, label_name)
+        training_downloader = TextDataLoader(trn_iter, text_name, label_name)
+        validation_downloader = TextDataLoader(val_iter, text_name, label_name)
+        obj = cls.from_dls(path, training_downloader, validation_downloader, test_downloader)
         obj.batch_size = batch_size
         obj.pad_idx = text_fld.vocab.stoi[text_fld.pad_token]
         obj.nt = len(text_fld.vocab)

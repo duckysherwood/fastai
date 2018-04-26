@@ -120,9 +120,9 @@ def train_lm(
         itos = pickle.load(open(f"{PATH}tmp/itos.pkl", "rb"))
         vs = len(itos)
 
-    trn_dl = LanguageModelLoader(trn_lm, batch_size, bptt)
-    val_dl = LanguageModelLoader(val_lm, batch_size, bptt)
-    md = LanguageModelData(PATH, 1, vs, trn_dl, val_dl, batch_size=batch_size, bptt=bptt)
+    training_downloader = LanguageModelLoader(trn_lm, batch_size, bptt)
+    validation_downloader = LanguageModelLoader(val_lm, batch_size, bptt)
+    md = LanguageModelData(PATH, 1, vs, training_downloader, validation_downloader, batch_size=batch_size, bptt=bptt)
 
     drops = np.array([0.25, 0.1, 0.2, 0.02, 0.15]) * dropmult
 

@@ -172,7 +172,7 @@ def fit(
     ep_vals = collections.OrderedDict()
     tot_epochs = int(np.ceil(np.array(n_epochs).sum()))
     cnt_phases = np.array(
-        [ep * len(dat.trn_dl) for (ep, dat) in zip(n_epochs, data)]
+        [ep * len(dat.training_downloader) for (ep, dat) in zip(n_epochs, data)]
     ).cumsum()
     phase = 0
     for epoch in tnrange(tot_epochs, desc="Epoch"):
@@ -182,10 +182,10 @@ def fit(
             cur_data.trn_sampler.set_epoch(epoch)
         if hasattr(cur_data, "val_sampler"):
             cur_data.val_sampler.set_epoch(epoch)
-        num_batch = len(cur_data.trn_dl)
-        t = tqdm(iter(cur_data.trn_dl), leave=False, total=num_batch)
+        num_batch = len(cur_data.training_downloader)
+        t = tqdm(iter(cur_data.training_downloader), leave=False, total=num_batch)
         if all_val:
-            val_iter = IterBatch(cur_data.val_dl)
+            val_iter = IterBatch(cur_data.validation_downloader)
 
         for (*x, y) in t:
             batch_num += 1
@@ -221,7 +221,7 @@ def fit(
                     break
 
         if not all_val:
-            vals = validate(model_stepper, cur_data.val_dl, metrics)
+            vals = validate(model_stepper, cur_data.validation_downloader, metrics)
             stop = False
             for cb in callbacks:
                 stop = stop or cb.on_epoch_end(vals)
@@ -233,8 +233,8 @@ def fit(
                         or epoch == tot_epochs - 1
                     )
                 ):
-                    fix_batchnorm(swa_model, cur_data.trn_dl)
-                    swa_vals = validate(swa_stepper, cur_data.val_dl, metrics)
+                    fix_batchnorm(swa_model, cur_data.training_downloader)
+                    swa_vals = validate(swa_stepper, cur_data.validation_downloader, metrics)
                     vals += swa_vals
 
             if epoch == 0:

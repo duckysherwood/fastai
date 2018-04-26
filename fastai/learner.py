@@ -83,7 +83,7 @@ class Learner():
     def lsuv_init(
         self, needed_std=1.0, std_tol=0.1, max_attempts=10, do_orthonorm=False
     ):
-        x = V(next(iter(self.data.trn_dl))[0])
+        x = V(next(iter(self.data.training_downloader))[0])
         self.models.model = apply_lsuv_init(
             self.model,
             x,
@@ -265,7 +265,7 @@ class Learner():
                     "fit() warning: use_wd_sched is set to True, but weight decay(s) passed are 0. Use wds to "
                     "pass weight decay values."
                 )
-            batch_per_epoch = len(data.trn_dl)
+            batch_per_epoch = len(data.training_downloader)
             cl = cycle_len if cycle_len else 1
             self.wd_sched = WeightDecaySchedule(
                 layer_opt,
@@ -284,7 +284,7 @@ class Learner():
             cycle_end = self.get_cycle_end(cycle_save_name)
             self.sched = CircularLR(
                 layer_opt,
-                len(data.trn_dl) * cycle_len,
+                len(data.training_downloader) * cycle_len,
                 on_cycle_end=cycle_end,
                 div=clr_div,
                 cut_div=cut_div,
@@ -296,7 +296,7 @@ class Learner():
             cycle_end = self.get_cycle_end(cycle_save_name)
             self.sched = CircularLR_beta(
                 layer_opt,
-                len(data.trn_dl) * cycle_len,
+                len(data.training_downloader) * cycle_len,
                 on_cycle_end=cycle_end,
                 div=div,
                 pct=pct,
@@ -304,7 +304,7 @@ class Learner():
             )
         elif cycle_len:
             cycle_end = self.get_cycle_end(cycle_save_name)
-            cycle_batches = len(data.trn_dl) * cycle_len
+            cycle_batches = len(data.training_downloader) * cycle_len
             self.sched = CosAnneal(
                 layer_opt,
                 cycle_batches,
@@ -404,7 +404,7 @@ class Learner():
     def warm_up(self, lr, wds=None):
         layer_opt = self.get_layer_opt(lr / 4, wds)
         self.sched = LR_Finder(
-            layer_opt, len(self.data.trn_dl), lr, linear=True
+            layer_opt, len(self.data.training_downloader), lr, linear=True
         )
         return self.fit_gen(self.model, self.data, layer_opt, 1)
 
@@ -446,7 +446,7 @@ class Learner():
         self.save("tmp")
         layer_opt = self.get_layer_opt(start_lr, wds)
         self.sched = LR_Finder(
-            layer_opt, len(self.data.trn_dl), end_lr, linear=linear
+            layer_opt, len(self.data.training_downloader), end_lr, linear=linear
         )
         self.fit_gen(self.model, self.data, layer_opt, 1, **kwargs)
         self.load("tmp")
@@ -489,19 +489,19 @@ class Learner():
             self.model,
             self.data,
             layer_opt,
-            num_it // len(self.data.trn_dl) + 1,
+            num_it // len(self.data.training_downloader) + 1,
             all_val=True,
             **kwargs,
         )
         self.load("tmp")
 
     def predict(self, is_test=False, use_swa=False):
-        dl = self.data.test_dl if is_test else self.data.val_dl
+        dl = self.data.test_downloader if is_test else self.data.validation_downloader
         m = self.swa_model if use_swa else self.model
         return predict(m, dl)
 
     def predict_with_targs(self, is_test=False, use_swa=False):
-        dl = self.data.test_dl if is_test else self.data.val_dl
+        dl = self.data.test_downloader if is_test else self.data.validation_downloader
         m = self.swa_model if use_swa else self.model
         return predict_with_targs(m, dl)
 
@@ -530,7 +530,7 @@ class Learner():
                 log predictions (numpy.ndarray): log predictions (i.e. `np.exp(log_preds)` will return probabilities)
                 targs (numpy.ndarray): target values when `is_test==False`; zeros otherwise.
         """
-        dl1 = self.data.test_dl if is_test else self.data.val_dl
+        dl1 = self.data.test_downloader if is_test else self.data.validation_downloader
         dl2 = self.data.test_aug_dl if is_test else self.data.aug_dl
         preds1, targs = predict_with_targs(self.model, dl1)
         preds1 = [preds1] * math.ceil(n_aug / 4)
@@ -579,7 +579,7 @@ class Learner():
             phases[0].opt_fn, self.get_layer_groups(), 1e-2, phases[0].wds
         )
         self.sched = OptimScheduler(
-            layer_opt, phases, len(self.data.trn_dl), stop_div
+            layer_opt, phases, len(self.data.training_downloader), stop_div
         )
         callbacks.append(self.sched)
         metrics = self.metrics

@@ -67,15 +67,15 @@ class ColumnarDataset(Dataset):
 
 class ColumnarModelData(ModelData):
 
-    def __init__(self, path, trn_ds, val_ds, batch_size, test_ds=None, shuffle=True):
-        test_dl = DataLoader(
-            test_ds, batch_size, shuffle=False, num_workers=1
-        ) if test_ds is not None else None
+    def __init__(self, path, training_dataset, validation_dataset, batch_size, test_dataset=None, shuffle=True):
+        test_downloader = DataLoader(
+            test_dataset, batch_size, shuffle=False, num_workers=1
+        ) if test_dataset is not None else None
         super().__init__(
             path,
-            DataLoader(trn_ds, batch_size, shuffle=shuffle, num_workers=1),
-            DataLoader(val_ds, batch_size * 2, shuffle=False, num_workers=1),
-            test_dl,
+            DataLoader(training_dataset, batch_size, shuffle=shuffle, num_workers=1),
+            DataLoader(validation_dataset, batch_size * 2, shuffle=False, num_workers=1),
+            test_downloader,
         )
 
     @classmethod
@@ -92,7 +92,7 @@ class ColumnarModelData(ModelData):
         shuffle=True,
     ):
         ((val_xs, trn_xs), (val_y, trn_y)) = split_by_idx(val_idxs, xs, y)
-        test_ds = PassthruDataset(
+        test_dataset = PassthruDataset(
             *(test_xs.T), [0] * len(test_xs), is_reg=is_reg, is_multi=is_multi
         ) if test_xs is not None else None
         return cls(
@@ -105,7 +105,7 @@ class ColumnarModelData(ModelData):
             ),
             batch_size=batch_size,
             shuffle=shuffle,
-            test_ds=test_ds,
+            test_dataset=test_dataset,
         )
 
     @classmethod
@@ -122,7 +122,7 @@ class ColumnarModelData(ModelData):
         is_multi,
         test_df=None,
     ):
-        test_ds = ColumnarDataset.from_data_frame(
+        test_dataset = ColumnarDataset.from_data_frame(
             test_df, cat_flds, None, is_reg, is_multi
         ) if test_df is not None else None
         return cls(
@@ -134,7 +134,7 @@ class ColumnarModelData(ModelData):
                 val_df, cat_flds, val_y, is_reg, is_multi
             ),
             batch_size,
-            test_ds=test_ds,
+            test_dataset=test_dataset,
         )
 
     @classmethod
@@ -276,8 +276,8 @@ class StructuredLearner(Learner):
         return model_summary(
             self.model,
             [
-                (self.data.trn_ds.cats.shape[1],),
-                (self.data.trn_ds.conts.shape[1],),
+                (self.data.training_dataset.cats.shape[1],),
+                (self.data.training_dataset.conts.shape[1],),
             ],
         )
 

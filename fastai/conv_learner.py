@@ -265,16 +265,16 @@ class ConvLearner(Learner):
         self.get_activations()
         act, val_act, test_act = self.activations
         m = self.models.top_model
-        if len(self.activations[0]) != len(self.data.trn_ds):
+        if len(self.activations[0]) != len(self.data.training_dataset):
             predict_to_bcolz(m, self.data.fix_dl, act)
-        if len(self.activations[1]) != len(self.data.val_ds):
-            predict_to_bcolz(m, self.data.val_dl, val_act)
+        if len(self.activations[1]) != len(self.data.validation_dataset):
+            predict_to_bcolz(m, self.data.validation_downloader, val_act)
         if (
-            self.data.test_dl
-            and (len(self.activations[2]) != len(self.data.test_ds))
+            self.data.test_downloader
+            and (len(self.activations[2]) != len(self.data.test_dataset))
         ):
-            if self.data.test_dl:
-                predict_to_bcolz(m, self.data.test_dl, test_act)
+            if self.data.test_downloader:
+                predict_to_bcolz(m, self.data.test_downloader, test_act)
 
         self.fc_data = ImageClassifierData.from_arrays(
             self.data.path,
@@ -282,7 +282,7 @@ class ConvLearner(Learner):
             (val_act, self.data.val_y),
             self.data.batch_size,
             classes=self.data.classes,
-            test=test_act if self.data.test_dl else None,
+            test=test_act if self.data.test_downloader else None,
             num_workers=8,
         )
 
