@@ -40,7 +40,7 @@ class RNN_Encoder(nn.Module):
     def __init__(
         self,
         ntoken,
-        emb_sz,
+        embedding_size,
         nhid,
         nlayers,
         pad_token,
@@ -55,7 +55,7 @@ class RNN_Encoder(nn.Module):
             Args:
                 batch_size (int): batch size of input data
                 ntoken (int): number of vocabulary (or tokens) in the source dataset
-                emb_sz (int): the embedding size to use to encode each token
+                embedding_size (int): the embedding size to use to encode each token
                 nhid (int): number of hidden activation per LSTM layer
                 nlayers (int): number of LSTM layers to use in the architecture
                 pad_token (int): the int value used for padding text.
@@ -71,12 +71,12 @@ class RNN_Encoder(nn.Module):
         super().__init__()
         self.ndir = 2 if bidir else 1
         self.batch_size = 1
-        self.encoder = nn.Embedding(ntoken, emb_sz, padding_idx=pad_token)
+        self.encoder = nn.Embedding(ntoken, embedding_size, padding_idx=pad_token)
         self.encoder_with_dropout = EmbeddingDropout(self.encoder)
         self.rnns = [
             nn.LSTM(
-                emb_sz if l == 0 else nhid,
-                (nhid if l != nlayers - 1 else emb_sz) // self.ndir,
+                embedding_size if l == 0 else nhid,
+                (nhid if l != nlayers - 1 else embedding_size) // self.ndir,
                 1,
                 bidirectional=bidir,
                 dropout=dropouth,
@@ -88,7 +88,7 @@ class RNN_Encoder(nn.Module):
         self.rnns = torch.nn.ModuleList(self.rnns)
         self.encoder.weight.data.uniform_(-self.initrange, self.initrange)
 
-        self.emb_sz, self.nhid, self.nlayers, self.dropoute = emb_sz, nhid, nlayers, dropoute
+        self.embedding_size, self.nhid, self.nlayers, self.dropoute = embedding_size, nhid, nlayers, dropoute
         self.dropouti = LockedDropout(dropouti)
         self.dropouths = nn.ModuleList(
             [LockedDropout(dropouth) for l in range(nlayers)]
@@ -130,7 +130,7 @@ class RNN_Encoder(nn.Module):
         return raw_outputs, outputs
 
     def one_hidden(self, l):
-        nh = (self.nhid if l != self.nlayers - 1 else self.emb_sz) // self.ndir
+        nh = (self.nhid if l != self.nlayers - 1 else self.embedding_size) // self.ndir
         return Variable(
             self.weights.new(self.ndir, self.batch_size, nh).zero_(),
             volatile=not self.training,
@@ -238,7 +238,7 @@ class SequentialRNN(nn.Sequential):
 
 def get_language_model(
     n_tok,
-    emb_sz,
+    embedding_size,
     nhid,
     nlayers,
     pad_token,
@@ -263,7 +263,7 @@ def get_language_model(
 
     Args:
         n_tok (int): number of unique vocabulary words (or tokens) in the source dataset
-        emb_sz (int): the embedding size to use to encode each token
+        embedding_size (int): the embedding size to use to encode each token
         nhid (int): number of hidden activation per LSTM layer
         nlayers (int): number of LSTM layers to use in the architecture
         pad_token (int): the int value used for padding text.
@@ -279,7 +279,7 @@ def get_language_model(
 
     rnn_enc = RNN_Encoder(
         n_tok,
-        emb_sz,
+        embedding_size,
         nhid=nhid,
         nlayers=nlayers,
         pad_token=pad_token,
@@ -290,7 +290,7 @@ def get_language_model(
     )
     enc = rnn_enc.encoder if tie_weights else None
     return SequentialRNN(
-        rnn_enc, LinearDecoder(n_tok, emb_sz, dropout, tie_encoder=enc)
+        rnn_enc, LinearDecoder(n_tok, embedding_size, dropout, tie_encoder=enc)
     )
 
 
@@ -299,7 +299,7 @@ def get_rnn_classifer(
     max_seq,
     n_class,
     n_tok,
-    emb_sz,
+    embedding_size,
     n_hid,
     n_layers,
     pad_token,
@@ -315,7 +315,7 @@ def get_rnn_classifer(
         bptt,
         max_seq,
         n_tok,
-        emb_sz,
+        embedding_size,
         n_hid,
         n_layers,
         pad_token=pad_token,

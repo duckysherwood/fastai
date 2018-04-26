@@ -74,6 +74,7 @@ class Learner():
         return self.data_
 
     def summary(self):
+        # @@@ what is data.sz?
         return model_summary(self.model, [3, self.data.sz, self.data.sz])
 
     def __repr__(self):

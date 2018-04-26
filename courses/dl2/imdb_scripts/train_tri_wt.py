@@ -32,7 +32,7 @@ def train_lm(
     PATH = NLPPATH / prefix
     PATH2 = NLPPATH / "wikitext-103_2"
     bptt = 70
-    em_sz, nh, nl = 400, 1150, 3
+    embedding_size, nh, nl = 400, 1150, 3
     opt_fn = partial(optim.Adam, betas=(0.8, 0.99))
 
     if backwards:
@@ -54,7 +54,7 @@ def train_lm(
     tprs = get_prs(trn_lm, vs)
     drops = np.array([0.25, 0.1, 0.2, 0.02, 0.15]) * 0.5
     learner, crit = get_learner(
-        drops, 15000, sampled, md, em_sz, nh, nl, opt_fn, tprs
+        drops, 15000, sampled, md, embedding_size, nh, nl, opt_fn, tprs
     )
     wd = 1e-7
     learner.metrics = [accuracy]
@@ -71,7 +71,7 @@ def train_lm(
         stoi2 = collections.defaultdict(
             lambda: -1, {v: k for k, v in enumerate(itos2)}
         )
-        nw = np.zeros((vs, em_sz), dtype=np.float32)
+        nw = np.zeros((vs, embedding_size), dtype=np.float32)
         for i, w in enumerate(itos):
             r = stoi2[w]
             nw[i] = ew[r] if r >= 0 else row_m

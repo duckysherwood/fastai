@@ -201,13 +201,13 @@ class ResNet(nn.Module):
             self._make_layer(block, int(256 * k), layers[2], stride=2),
             self._make_layer(block, int(512 * k), layers[3], stride=2),
         ]
-        out_sz = int(512 * k) * block.expansion
+        out_size = int(512 * k) * block.expansion
 
         if vgg_head:
             features += [
                 nn.AdaptiveAvgPool2d(3),
                 Flatten(),
-                nn.Linear(out_sz * 3 * 3, 4096),
+                nn.Linear(out_size * 3 * 3, 4096),
                 nn.ReLU(inplace=True),
                 bn1(4096),
                 nn.Dropout(0.25),
@@ -221,7 +221,7 @@ class ResNet(nn.Module):
             features += [
                 nn.AdaptiveAvgPool2d(1),
                 Flatten(),
-                nn.Linear(out_sz, num_classes),
+                nn.Linear(out_size, num_classes),
             ]
 
         self.features = nn.Sequential(*features)

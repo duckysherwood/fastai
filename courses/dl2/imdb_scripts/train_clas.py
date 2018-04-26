@@ -57,7 +57,7 @@ def train_clas(
         "Error: %s does not exist."
         % os.path.join(PATH, "models", lm_path + ".h5")
     )
-    bptt, em_sz, nh, nl = 70, 400, 1150, 3
+    bptt, embedding_size, nh, nl = 70, 400, 1150, 3
     opt_fn = partial(optim.Adam, betas=(0.8, 0.99))
 
     if backwards:
@@ -108,11 +108,11 @@ def train_clas(
         20 * 70,
         c,
         vs,
-        emb_sz=em_sz,
+        embedding_size=embedding_size,
         n_hid=nh,
         n_layers=nl,
         pad_token=1,
-        layers=[em_sz * 3, 50, c],
+        layers=[embedding_size * 3, 50, c],
         drops=[dps[4], 0.1],
         dropouti=dps[0],
         wdrop=dps[1],

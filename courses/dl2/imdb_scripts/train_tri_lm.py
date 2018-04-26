@@ -91,7 +91,8 @@ def train_lm(
     lm_path = f"{PRE}{lm_id}lm"
     enc_path = f"{PRE}{lm_id}lm_enc"
     bptt = 70
-    em_sz, nh, nl = 400, 1150, 3
+    embedding_size = 400
+    nh, nl = 1150, 3
     opt_fn = partial(optim.Adam, betas=(0.8, 0.99))
 
     if backwards:
@@ -127,7 +128,8 @@ def train_lm(
 
     learner = md.get_model(
         opt_fn,
-        em_sz,
+        embedding_size = 400
+        ,
         nh,
         nl,
         dropouti=drops[0],
@@ -157,7 +159,8 @@ def train_lm(
             stoi2 = collections.defaultdict(
                 lambda: -1, {v: k for k, v in enumerate(itos2)}
             )
-            nw = np.zeros((vs, em_sz), dtype=np.float32)
+            nw = np.zeros((vs, embedding_size = 400
+            ), dtype=np.float32)
             nb = np.zeros((vs,), dtype=np.float32)
             for i, w in enumerate(itos):
                 r = stoi2[w]

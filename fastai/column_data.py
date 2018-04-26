@@ -166,7 +166,7 @@ class ColumnarModelData(ModelData):
 
     def get_learner(
         self,
-        emb_szs,
+        embedding_sizes,
         n_cont,
         emb_drop,
         out_sz,
@@ -177,7 +177,7 @@ class ColumnarModelData(ModelData):
         **kwargs
     ):
         model = MixedInputModel(
-            emb_szs,
+            embedding_sizes,
             n_cont,
             emb_drop,
             out_sz,
@@ -203,7 +203,7 @@ class MixedInputModel(nn.Module):
 
     def __init__(
         self,
-        emb_szs,
+        embedding_sizes,
         n_cont,
         emb_drop,
         out_sz,
@@ -215,7 +215,7 @@ class MixedInputModel(nn.Module):
         is_multi=False,
     ):
         super().__init__()
-        self.embatch_size = nn.ModuleList([nn.Embedding(c, s) for c, s in emb_szs])
+        self.embatch_size = nn.ModuleList([nn.Embedding(c, s) for c, s in embedding_sizes])
         for emb in self.embatch_size:
             emb_init(emb)
         n_emb = sum(e.embedding_dim for e in self.embatch_size)
