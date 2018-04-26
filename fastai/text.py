@@ -241,9 +241,9 @@ class LanguageModelData():
         self.path, self.pad_idx, self.n_tok = path, pad_idx, n_tok
         self.trn_dl, self.val_dl, self.test_dl = trn_dl, val_dl, test_dl
 
-    def get_model(self, opt_fn, emb_sz, n_hid, n_layers, **kwargs):
+    def get_model(self, opt_fn, embedding_size, n_hid, n_layers, **kwargs):
         m = get_language_model(
-            self.n_tok, emb_sz, n_hid, n_layers, self.pad_idx, **kwargs
+            self.n_tok, embedding_size, n_hid, n_layers, self.pad_idx, **kwargs
         )
         model = LanguageModel(to_gpu(m))
         return RNN_Learner(self, model, opt_fn=opt_fn)

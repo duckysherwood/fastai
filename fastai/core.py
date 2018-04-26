@@ -146,8 +146,8 @@ def one_hot(a, c):
     return np.eye(c)[a]
 
 
-def partition(a, sz):
-    return [a[i:i + sz] for i in range(0, len(a), sz)]
+def partition(a, size):
+    return [a[i:i + size] for i in range(0, len(a), size)]
 
 
 def partition_by_cores(a):

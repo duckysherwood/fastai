@@ -21,7 +21,7 @@ class DotProdNB(nn.Module):
         self.w.weight.data.uniform_(-0.1, 0.1)
         self.r = nn.Embedding(nf + 1, ny)
 
-    def forward(self, feat_idx, feat_cnt, sz):
+    def forward(self, feat_idx, feat_cnt, unused_size):
         w = self.w(feat_idx)
         r = self.r(feat_idx)
         x = ((w + self.w_adj) * r / self.r_adj).sum(1)
@@ -35,7 +35,7 @@ class SimpleNB(nn.Module):
         self.r = nn.Embedding(nf + 1, ny, padding_idx=0)
         self.b = nn.Parameter(torch.zeros(ny))
 
-    def forward(self, feat_idx, feat_cnt, sz):
+    def forward(self, feat_idx, feat_cnt, unused_size):
         r = self.r(feat_idx)
         x = r.sum(1) + self.b
         return F.softmax(x)
@@ -270,12 +270,12 @@ class LanguageModelData():
             >> FILES = dict(train=TRN_PATH, validation=VAL_PATH, test=VAL_PATH)
             >> md = LanguageModelData.from_text_files(PATH, TEXT, **FILES, bs=64, bptt=70, min_freq=10)
 
-            >> em_sz = 200  # size of each embedding vector
+            >> em_unused_size = 200  # size of each embedding vector
             >> nh = 500     # number of hidden activations per layer
             >> nl = 3       # number of layers
 
             >> opt_fn = partial(optim.Adam, betas=(0.7, 0.99))
-            >> learner = md.get_model(opt_fn, em_sz, nh, nl,
+            >> learner = md.get_model(opt_fn, em_unused_size, nh, nl,
                            dropouti=0.05, dropout=0.05, wdrop=0.1, dropoute=0.02, dropouth=0.05)
             >> learner.reg_fn = seq2seq_reg
             >> learner.clip=0.3
@@ -332,12 +332,12 @@ class LanguageModelData():
         self.val_dl = factory(self.val_ds)
         self.test_dl = map_none(self.test_ds, factory)  # not required
 
-    def get_model(self, opt_fn, emb_sz, n_hid, n_layers, **kwargs):
+    def get_model(self, opt_fn, emb_unused_size, n_hid, n_layers, **kwargs):
         """ Method returns a RNN_Learner object, that wraps an instance of the RNN_Encoder module.
 
         Args:
             opt_fn (Optimizer): the torch optimizer function to use
-            emb_sz (int): embedding size
+            emb_unused_size (int): embedding size
             n_hid (int): number of hidden inputs
             n_layers (int): number of hidden layers
             kwargs: other arguments
@@ -347,7 +347,7 @@ class LanguageModelData():
 
         """
         m = get_language_model(
-            self.nt, emb_sz, n_hid, n_layers, self.pad_idx, **kwargs
+            self.nt, emb_unused_size, n_hid, n_layers, self.pad_idx, **kwargs
         )
         model = SingleModel(to_gpu(m))
         return RNN_Learner(self, model, opt_fn=opt_fn)
@@ -480,16 +480,16 @@ class TextData(ModelData):
         return RNN_Learner(self, model, opt_fn=opt_fn)
 
     def get_model(
-        self, opt_fn, max_sl, bptt, emb_sz, n_hid, n_layers, dropout, **kwargs
+        self, opt_fn, max_sl, bptt, emb_unused_size, n_hid, n_layers, dropout, **kwargs
     ):
         m = get_rnn_classifer(
             bptt,
             max_sl,
             self.c,
             self.nt,
-            layers=[emb_sz * 3, self.c],
+            layers=[emb_unused_size * 3, self.c],
             drops=[dropout],
-            emb_sz=emb_sz,
+            emb_unused_size=emb_unused_size,
             n_hid=n_hid,
             n_layers=n_layers,
             pad_token=self.pad_idx,

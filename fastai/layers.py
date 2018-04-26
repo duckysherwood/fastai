@@ -4,11 +4,11 @@ from .torch_imports import *
 
 class AdaptiveConcatPool2d(nn.Module):
 
-    def __init__(self, sz=None):
+    def __init__(self, size=None):
         super().__init__()
-        sz = sz or (1, 1)
-        self.ap = nn.AdaptiveAvgPool2d(sz)
-        self.mp = nn.AdaptiveMaxPool2d(sz)
+        size = size or (1, 1)
+        self.ap = nn.AdaptiveAvgPool2d(size)
+        self.mp = nn.AdaptiveMaxPool2d(size)
 
     def forward(self, x):
         return torch.cat([self.mp(x), self.ap(x)], 1)

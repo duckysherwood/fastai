@@ -4,11 +4,11 @@ from functools import wraps
 from torch.autograd import Variable
 
 
-def dropout_mask(x, sz, dropout):
-    """ Applies a dropout mask whose size is determined by passed argument 'sz'.
+def dropout_mask(x, size, dropout):
+    """ Applies a dropout mask whose size is determined by passed argument 'size'.
     Args:
         x (nn.Variable): A torch Variable object
-        sz (tuple(int, int, int)): The expected size of the new tensor
+        size (tuple(int, int, int)): The expected size of the new tensor
         dropout (float): The dropout fraction to apply
 
     This method uses the bernoulli distribution to decide which activations to keep.
@@ -42,7 +42,7 @@ def dropout_mask(x, sz, dropout):
               5  0  5  0
             [torch.FloatTensor of size 1x3x4]
     """
-    return x.new(*sz).bernoulli_(1 - dropout) / (1 - dropout)
+    return x.new(*size).bernoulli_(1 - dropout) / (1 - dropout)
 
 
 class LockedDropout(nn.Module):

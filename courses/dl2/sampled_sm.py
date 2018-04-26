@@ -2,9 +2,9 @@ from fastai.learner import *
 from fastai.text import *
 
 
-def resample_vocab(itos, trn, val, sz):
+def resample_vocab(itos, trn, val, vocab_size):
     freqs = Counter(trn)
-    itos2 = [o for o, p in freqs.most_common()][:sz]
+    itos2 = [o for o, p in freqs.most_common()][:vocab_size]
     itos2.insert(0, 1)
     itos2.insert(0, 0)
     stoi2 = collections.defaultdict(
@@ -52,13 +52,13 @@ class LinearDecoder(nn.Module):
 
 
 def get_language_model(
-    n_tok, em_sz, nhid, nlayers, pad_token, decode_train=True, dropouts=None
+    n_tok, em_vocab_size, nhid, nlayers, pad_token, decode_train=True, dropouts=None
 ):
     if dropouts is None:
         dropouts = [0.5, 0.4, 0.5, 0.05, 0.3]
     rnn_enc = RNN_Encoder(
         n_tok,
-        em_sz,
+        em_vocab_size,
         nhid=nhid,
         nlayers=nlayers,
         pad_token=pad_token,
@@ -69,7 +69,7 @@ def get_language_model(
     )
     rnn_dec = LinearDecoder(
         n_tok,
-        em_sz,
+        em_vocab_size,
         dropouts[1],
         decode_train=decode_train,
         tie_encoder=rnn_enc.encoder,
@@ -116,11 +116,11 @@ class CrossEntDecoder(nn.Module):
         return F.cross_entropy(input, target)
 
 
-def get_learner(drops, n_neg, sampled, md, em_sz, nh, nl, opt_fn, prs):
+def get_learner(drops, n_neg, sampled, md, em_vocab_size, nh, nl, opt_fn, prs):
     m = to_gpu(
         get_language_model(
             md.nt,
-            em_sz,
+            em_vocab_size,
             nh,
             nl,
             md.pad_idx,

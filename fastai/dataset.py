@@ -37,9 +37,9 @@ def resize_img(fname, targ, path, new_path):
     im = Image.open(os.path.join(path, fname)).convert("RGB")
     r, c = im.size
     ratio = targ / min(r, c)
-    sz = (scale_to(r, ratio, targ), scale_to(c, ratio, targ))
+    get_image_size = (scale_to(r, ratio, targ), scale_to(c, ratio, targ))
     os.makedirs(os.path.split(dest)[0], exist_ok=True)
-    im.resize(sz, Image.LINEAR).save(dest)
+    im.resize(get_image_size, Image.LINEAR).save(dest)
 
 
 def resize_imgs(fnames, targ, path, new_path):
@@ -169,7 +169,7 @@ class BaseDataset(Dataset):
         self.transform = transform
         self.n = self.get_n()
         self.c = self.get_c()
-        self.sz = self.get_sz()
+        self.get_image_size = self.get_image_size()
 
     def get1item(self, idx):
         x, y = self.get_x(idx), self.get_y(idx)
@@ -200,7 +200,7 @@ class BaseDataset(Dataset):
         raise NotImplementedError
 
     @abstractmethod
-    def get_sz(self):
+    def get_image_size(self):
         """Return maximum size of an image in a dataset."""
         raise NotImplementedError
 
@@ -258,8 +258,8 @@ class FilesDataset(BaseDataset):
         self.path, self.fnames = path, fnames
         super().__init__(transform)
 
-    def get_sz(self):
-        return self.transform.sz
+    def get_image_size(self):
+        return self.transform.get_image_size
 
     def get_x(self, i):
         return open_image(os.path.join(self.path, self.fnames[i]))
@@ -275,7 +275,7 @@ class FilesDataset(BaseDataset):
         """Reverse the normalization done to a batch of images.
 
         Arguments:
-            arr: of shape/size (N,3,sz,sz)
+            arr: of shape/size (N,3,get_image_size,get_image_size)
         """
         if type(arr) is not np.ndarray:
             arr = to_np(arr)
@@ -333,7 +333,7 @@ class ArraysDataset(BaseDataset):
     def get_n(self):
         return len(self.y)
 
-    def get_sz(self):
+    def get_image_size(self):
         return self.x.shape[1]
 
 
@@ -425,8 +425,8 @@ class ImageData(ModelData):
         )
 
     @property
-    def sz(self):
-        return self.trn_ds.sz
+    def get_image_size(self):
+        return self.trn_ds.get_image_size
 
     @property
     def c(self):
@@ -435,7 +435,7 @@ class ImageData(ModelData):
     def resized(self, dl, targ, new_path):
         return dl.dataset.resize_imgs(targ, new_path) if dl else None
 
-    def resize(self, targ_sz, new_path="tmp"):
+    def resize(self, targ_get_image_size, new_path="tmp"):
         new_ds = []
         dls = [self.trn_dl, self.val_dl, self.fix_dl, self.aug_dl]
         if self.test_dl:
@@ -444,7 +444,7 @@ class ImageData(ModelData):
             dls += [None, None]
         t = tqdm_notebook(dls)
         for dl in t:
-            new_ds.append(self.resized(dl, targ_sz, new_path))
+            new_ds.append(self.resized(dl, targ_get_image_size, new_path))
         t.close()
         return self.__class__(
             new_ds[0].path, new_ds, self.bs, self.num_workers, self.classes

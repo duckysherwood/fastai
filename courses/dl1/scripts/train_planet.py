@@ -15,10 +15,10 @@ if cv_idx == 1:
 n = len(list(open(f"{path}train_v2.csv"))) - 1
 
 
-def train_sz(sz, load=None, save_name=None, suf=None):
-    print(f"\n***** {sz} *****")
-    # data=get_data_pad(f_model, path, sz, bs, n, cv_idx)
-    data = get_data_zoom(f_model, path, sz, bs, n, cv_idx)
+def train_image_size(image_size, load=None, save_name=None, suf=None):
+    print(f"\n***** {image_size} *****")
+    # data=get_data_pad(f_model, path, image_size, bs, n, cv_idx)
+    data = get_data_zoom(f_model, path, image_size, bs, n, cv_idx)
     learn = Learner.pretrained_convnet(f_model, data, metrics=[f2])
     if load:
         learn.load(f"{load}_{cv_idx}{suf}")
@@ -31,10 +31,10 @@ def train_sz(sz, load=None, save_name=None, suf=None):
     learn.unfreeze()
     print("--- All")
     learn.fit(0.2, 15, cycle_len=3, cycle_save_name=f"{save_name}{suf}")
-    learn.save(f"{sz}_{cv_idx}{suf}")
+    learn.save(f"{image_size}_{cv_idx}{suf}")
 
 
 suf = "_zoom"
-train_sz(64, suf=suf)
-train_sz(128, load=64, suf=suf)
-train_sz(244, load=128, save_name=f"170809_{cv_idx}", suf=suf)
+train_image_size(64, suf=suf)
+train_image_size(128, load=64, suf=suf)
+train_image_size(244, load=128, save_name=f"170809_{cv_idx}", suf=suf)
