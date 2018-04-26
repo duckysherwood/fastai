@@ -15,7 +15,7 @@ def tensor2im(image_tensor, imtype=np.uint8):
     return image_numpy.astype(imtype)
 
 
-def diagnose_network(net, name='network'):
+def diagnose_network(net, name="network"):
     mean = 0.0
     count = 0
     for param in net.parameters():
@@ -36,11 +36,13 @@ def save_image(image_numpy, image_path):
 def print_numpy(x, val=True, shp=False):
     x = x.astype(np.float64)
     if shp:
-        print('shape,', x.shape)
+        print("shape,", x.shape)
     if val:
         x = x.flatten()
-        print('mean = %3.3f, min = %3.3f, max = %3.3f, median = %3.3f, std=%3.3f' % (
-            np.mean(x), np.min(x), np.max(x), np.median(x), np.std(x)))
+        print(
+            "mean = %3.3f, min = %3.3f, max = %3.3f, median = %3.3f, std=%3.3f"
+            % (np.mean(x), np.min(x), np.max(x), np.median(x), np.std(x))
+        )
 
 
 def mkdirs(paths):

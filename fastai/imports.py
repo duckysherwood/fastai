@@ -21,39 +21,53 @@ from distutils.version import LooseVersion
 
 from matplotlib import pyplot as plt, rcParams, animation
 from ipywidgets import interact, interactive, fixed, widgets
-matplotlib.rc('animation', html='html5')
+
+matplotlib.rc("animation", html="html5")
 np.set_printoptions(precision=5, linewidth=110, suppress=True)
 
 from ipykernel.kernelapp import IPKernelApp
-def in_notebook(): return IPKernelApp.initialized()
+
+
+def in_notebook():
+    return IPKernelApp.initialized()
+
 
 def in_ipynb():
     try:
         cls = get_ipython().__class__.__name__
-        return cls == 'ZMQInteractiveShell'
+        return cls == "ZMQInteractiveShell"
     except NameError:
         return False
+
 
 import tqdm as tq
 from tqdm import tqdm_notebook, tnrange
 
+
 def clear_tqdm():
-    inst = getattr(tq.tqdm, '_instances', None)
-    if not inst: return
+    inst = getattr(tq.tqdm, "_instances", None)
+    if not inst:
+        return
     try:
-        for i in range(len(inst)): inst.pop().close()
+        for i in range(len(inst)):
+            inst.pop().close()
     except Exception:
         pass
 
+
 if in_notebook():
+
     def tqdm(*args, **kwargs):
         clear_tqdm()
         return tq.tqdm(*args, file=sys.stdout, **kwargs)
+
     def trange(*args, **kwargs):
         clear_tqdm()
         return tq.trange(*args, file=sys.stdout, **kwargs)
+
+
 else:
     from tqdm import tqdm, trange
-    tnrange=trange
-    tqdm_notebook=tqdm
 
+    tnrange = trange
+    tqdm_notebook = tqdm

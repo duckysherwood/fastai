@@ -42,16 +42,18 @@ def dropout_mask(x, sz, dropout):
               5  0  5  0
             [torch.FloatTensor of size 1x3x4]
     """
-    return x.new(*sz).bernoulli_(1-dropout)/(1-dropout)
+    return x.new(*sz).bernoulli_(1 - dropout) / (1 - dropout)
 
 
 class LockedDropout(nn.Module):
+
     def __init__(self, p=0.5):
         super().__init__()
-        self.p=p
+        self.p = p
 
     def forward(self, x):
-        if not self.training or not self.p: return x
+        if not self.training or not self.p:
+            return x
         m = dropout_mask(x.data, (1, x.size(1), x.size(2)), self.p)
         return Variable(m, requires_grad=False) * x
 
@@ -61,7 +63,8 @@ class WeightDrop(torch.nn.Module):
     Primarily responsible for updating the weights in the wrapped module based
     on a specified dropout.
     """
-    def __init__(self, module, dropout, weights=['weight_hh_l0']):
+
+    def __init__(self, module, dropout, weights=["weight_hh_l0"]):
         """ Default constructor for the WeightDrop module
 
         Args:
@@ -71,7 +74,7 @@ class WeightDrop(torch.nn.Module):
                 which should be fractionally dropped.
         """
         super().__init__()
-        self.module,self.weights,self.dropout = module,weights,dropout
+        self.module, self.weights, self.dropout = module, weights, dropout
         self._setup()
 
     def _setup(self):
@@ -85,12 +88,14 @@ class WeightDrop(torch.nn.Module):
          Returns:
              None
         """
-        if isinstance(self.module, torch.nn.RNNBase): self.module.flatten_parameters = noop
+        if isinstance(self.module, torch.nn.RNNBase):
+            self.module.flatten_parameters = noop
         for name_w in self.weights:
             w = getattr(self.module, name_w)
             del self.module._parameters[name_w]
-            self.module.register_parameter(name_w + '_raw', nn.Parameter(w.data))
-
+            self.module.register_parameter(
+                name_w + "_raw", nn.Parameter(w.data)
+            )
 
     def _setweights(self):
         """ Uses pytorch's built-in dropout function to apply dropout to the parameters of
@@ -102,8 +107,10 @@ class WeightDrop(torch.nn.Module):
             None
         """
         for name_w in self.weights:
-            raw_w = getattr(self.module, name_w + '_raw')
-            w = torch.nn.functional.dropout(raw_w, p=self.dropout, training=self.training)
+            raw_w = getattr(self.module, name_w + "_raw")
+            w = torch.nn.functional.dropout(
+                raw_w, p=self.dropout, training=self.training
+            )
             setattr(self.module, name_w, w)
 
     def forward(self, *args):
@@ -118,6 +125,7 @@ class WeightDrop(torch.nn.Module):
         """
         self._setweights()
         return self.module.forward(*args)
+
 
 class EmbeddingDropout(nn.Module):
 
@@ -163,18 +171,29 @@ class EmbeddingDropout(nn.Module):
 
     def forward(self, words, dropout=0.1, scale=None):
         if dropout:
-            size = (self.embed.weight.size(0),1)
-            mask = Variable(dropout_mask(self.embed.weight.data, size, dropout))
+            size = (self.embed.weight.size(0), 1)
+            mask = Variable(
+                dropout_mask(self.embed.weight.data, size, dropout)
+            )
             masked_embed_weight = mask * self.embed.weight
-        else: masked_embed_weight = self.embed.weight
+        else:
+            masked_embed_weight = self.embed.weight
 
-        if scale: masked_embed_weight = scale * masked_embed_weight
+        if scale:
+            masked_embed_weight = scale * masked_embed_weight
 
         padding_idx = self.embed.padding_idx
-        if padding_idx is None: padding_idx = -1
+        if padding_idx is None:
+            padding_idx = -1
 
-        X = self.embed._backend.Embedding.apply(words,
-             masked_embed_weight, padding_idx, self.embed.max_norm,
-             self.embed.norm_type, self.embed.scale_grad_by_freq, self.embed.sparse)
+        X = self.embed._backend.Embedding.apply(
+            words,
+            masked_embed_weight,
+            padding_idx,
+            self.embed.max_norm,
+            self.embed.norm_type,
+            self.embed.scale_grad_by_freq,
+            self.embed.sparse,
+        )
 
         return X

@@ -9,8 +9,9 @@ from . import networks
 
 
 class CycleGANModel(BaseModel):
+
     def name(self):
-        return 'CycleGANModel'
+        return "CycleGANModel"
 
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
@@ -18,39 +19,80 @@ class CycleGANModel(BaseModel):
         # The naming conversion is different from those used in the paper
         # Code (paper): G_A (G), G_B (F), D_A (D_Y), D_B (D_X)
 
-        self.netG_A = networks.define_G(opt.input_nc, opt.output_nc,
-                                        opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
-        self.netG_B = networks.define_G(opt.output_nc, opt.input_nc,
-                                        opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
+        self.netG_A = networks.define_G(
+            opt.input_nc,
+            opt.output_nc,
+            opt.ngf,
+            opt.which_model_netG,
+            opt.norm,
+            not opt.no_dropout,
+            opt.init_type,
+            self.gpu_ids,
+        )
+        self.netG_B = networks.define_G(
+            opt.output_nc,
+            opt.input_nc,
+            opt.ngf,
+            opt.which_model_netG,
+            opt.norm,
+            not opt.no_dropout,
+            opt.init_type,
+            self.gpu_ids,
+        )
 
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
-            self.netD_A = networks.define_D(opt.output_nc, opt.ndf,
-                                            opt.which_model_netD,
-                                            opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
-            self.netD_B = networks.define_D(opt.input_nc, opt.ndf,
-                                            opt.which_model_netD,
-                                            opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
+            self.netD_A = networks.define_D(
+                opt.output_nc,
+                opt.ndf,
+                opt.which_model_netD,
+                opt.n_layers_D,
+                opt.norm,
+                use_sigmoid,
+                opt.init_type,
+                self.gpu_ids,
+            )
+            self.netD_B = networks.define_D(
+                opt.input_nc,
+                opt.ndf,
+                opt.which_model_netD,
+                opt.n_layers_D,
+                opt.norm,
+                use_sigmoid,
+                opt.init_type,
+                self.gpu_ids,
+            )
         if not self.isTrain or opt.continue_train:
             which_epoch = opt.which_epoch
-            self.load_network(self.netG_A, 'G_A', which_epoch)
-            self.load_network(self.netG_B, 'G_B', which_epoch)
+            self.load_network(self.netG_A, "G_A", which_epoch)
+            self.load_network(self.netG_B, "G_B", which_epoch)
             if self.isTrain:
-                self.load_network(self.netD_A, 'D_A', which_epoch)
-                self.load_network(self.netD_B, 'D_B', which_epoch)
+                self.load_network(self.netD_A, "D_A", which_epoch)
+                self.load_network(self.netD_B, "D_B", which_epoch)
 
         if self.isTrain:
             self.fake_A_pool = ImagePool(opt.pool_size)
             self.fake_B_pool = ImagePool(opt.pool_size)
             # define loss functions
-            self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan, tensor=self.Tensor)
+            self.criterionGAN = networks.GANLoss(
+                use_lsgan=not opt.no_lsgan, tensor=self.Tensor
+            )
             self.criterionCycle = torch.nn.L1Loss()
             self.criterionIdt = torch.nn.L1Loss()
             # initialize optimizers
-            self.optimizer_G = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters()),
-                                                lr=opt.lr, betas=(opt.beta1, 0.999))
-            self.optimizer_D_A = torch.optim.Adam(self.netD_A.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-            self.optimizer_D_B = torch.optim.Adam(self.netD_B.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+            self.optimizer_G = torch.optim.Adam(
+                itertools.chain(
+                    self.netG_A.parameters(), self.netG_B.parameters()
+                ),
+                lr=opt.lr,
+                betas=(opt.beta1, 0.999),
+            )
+            self.optimizer_D_A = torch.optim.Adam(
+                self.netD_A.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
+            )
+            self.optimizer_D_B = torch.optim.Adam(
+                self.netD_B.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
+            )
             self.optimizers = []
             self.schedulers = []
             self.optimizers.append(self.optimizer_G)
@@ -59,24 +101,24 @@ class CycleGANModel(BaseModel):
             for optimizer in self.optimizers:
                 self.schedulers.append(networks.get_scheduler(optimizer, opt))
 
-        print('---------- Networks initialized -------------')
+        print("---------- Networks initialized -------------")
         networks.print_network(self.netG_A)
         networks.print_network(self.netG_B)
         if self.isTrain:
             networks.print_network(self.netD_A)
             networks.print_network(self.netD_B)
-        print('-----------------------------------------------')
+        print("-----------------------------------------------")
 
     def set_input(self, input):
-        AtoB = self.opt.which_direction == 'AtoB'
-        input_A = input['A' if AtoB else 'B']
-        input_B = input['B' if AtoB else 'A']
+        AtoB = self.opt.which_direction == "AtoB"
+        input_A = input["A" if AtoB else "B"]
+        input_B = input["B" if AtoB else "A"]
         if len(self.gpu_ids) > 0:
             input_A = input_A.cuda(self.gpu_ids[0], async=True)
             input_B = input_B.cuda(self.gpu_ids[0], async=True)
         self.input_A = input_A
         self.input_B = input_B
-        self.image_paths = input['A_paths' if AtoB else 'B_paths']
+        self.image_paths = input["A_paths" if AtoB else "B_paths"]
 
     def forward(self):
         self.real_A = Variable(self.input_A)
@@ -128,10 +170,14 @@ class CycleGANModel(BaseModel):
         if lambda_idt > 0:
             # G_A should be identity if real_B is fed.
             idt_A = self.netG_A(self.real_B)
-            loss_idt_A = self.criterionIdt(idt_A, self.real_B) * lambda_B * lambda_idt
+            loss_idt_A = self.criterionIdt(
+                idt_A, self.real_B
+            ) * lambda_B * lambda_idt
             # G_B should be identity if real_A is fed.
             idt_B = self.netG_B(self.real_A)
-            loss_idt_B = self.criterionIdt(idt_B, self.real_A) * lambda_A * lambda_idt
+            loss_idt_B = self.criterionIdt(
+                idt_B, self.real_A
+            ) * lambda_A * lambda_idt
 
             self.idt_A = idt_A.data
             self.idt_B = idt_B.data
@@ -191,11 +237,19 @@ class CycleGANModel(BaseModel):
         self.optimizer_D_B.step()
 
     def get_current_errors(self):
-        ret_errors = OrderedDict([('D_A', self.loss_D_A), ('G_A', self.loss_G_A), ('Cyc_A', self.loss_cycle_A),
-                                  ('D_B', self.loss_D_B), ('G_B', self.loss_G_B), ('Cyc_B', self.loss_cycle_B)])
+        ret_errors = OrderedDict(
+            [
+                ("D_A", self.loss_D_A),
+                ("G_A", self.loss_G_A),
+                ("Cyc_A", self.loss_cycle_A),
+                ("D_B", self.loss_D_B),
+                ("G_B", self.loss_G_B),
+                ("Cyc_B", self.loss_cycle_B),
+            ]
+        )
         if self.opt.lambda_identity > 0.0:
-            ret_errors['idt_A'] = self.loss_idt_A
-            ret_errors['idt_B'] = self.loss_idt_B
+            ret_errors["idt_A"] = self.loss_idt_A
+            ret_errors["idt_B"] = self.loss_idt_B
         return ret_errors
 
     def get_current_visuals(self):
@@ -205,21 +259,29 @@ class CycleGANModel(BaseModel):
         real_B = util.tensor2im(self.input_B)
         fake_A = util.tensor2im(self.fake_A)
         rec_B = util.tensor2im(self.rec_B)
-        ret_visuals = OrderedDict([('real_A', real_A), ('fake_B', fake_B), ('rec_A', rec_A),
-                                   ('real_B', real_B), ('fake_A', fake_A), ('rec_B', rec_B)])
+        ret_visuals = OrderedDict(
+            [
+                ("real_A", real_A),
+                ("fake_B", fake_B),
+                ("rec_A", rec_A),
+                ("real_B", real_B),
+                ("fake_A", fake_A),
+                ("rec_B", rec_B),
+            ]
+        )
         if self.opt.isTrain and self.opt.lambda_identity > 0.0:
-            ret_visuals['idt_A'] = util.tensor2im(self.idt_A)
-            ret_visuals['idt_B'] = util.tensor2im(self.idt_B)
+            ret_visuals["idt_A"] = util.tensor2im(self.idt_A)
+            ret_visuals["idt_B"] = util.tensor2im(self.idt_B)
         return ret_visuals
 
     def save(self, label):
-        self.save_network(self.netG_A, 'G_A', label, self.gpu_ids)
-        self.save_network(self.netD_A, 'D_A', label, self.gpu_ids)
-        self.save_network(self.netG_B, 'G_B', label, self.gpu_ids)
-        self.save_network(self.netD_B, 'D_B', label, self.gpu_ids)
+        self.save_network(self.netG_A, "G_A", label, self.gpu_ids)
+        self.save_network(self.netD_A, "D_A", label, self.gpu_ids)
+        self.save_network(self.netG_B, "G_B", label, self.gpu_ids)
+        self.save_network(self.netD_B, "D_B", label, self.gpu_ids)
 
     def load(self, label):
-        self.load_network(self.netG_A, 'G_A', label)
-        self.load_network(self.netD_A, 'D_A', label)
-        self.load_network(self.netG_B, 'G_B', label)
-        self.load_network(self.netD_B, 'D_B', label)
+        self.load_network(self.netG_A, "G_A", label)
+        self.load_network(self.netD_A, "D_A", label)
+        self.load_network(self.netG_B, "G_B", label)
+        self.load_network(self.netD_B, "D_B", label)

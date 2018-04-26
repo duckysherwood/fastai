@@ -2,8 +2,6 @@ import sys
 import re
 
 
-
-
 def expand(filename):
 
     f = open(filename, "r")
@@ -13,7 +11,7 @@ def expand(filename):
     regex_outside = r"(^|\}\})(.*?)(\{\{|$)"
 
     within = re.finditer(regex_inside, contents, re.MULTILINE | re.DOTALL)
-    outside = re.finditer(regex_outside, contents, re.MULTILINE | re.DOTALL) 
+    outside = re.finditer(regex_outside, contents, re.MULTILINE | re.DOTALL)
 
     for matchNum, match in enumerate(within):
         for groupNum in range(0, len(match.groups())):
@@ -21,17 +19,24 @@ def expand(filename):
             if group.startswith("class"):
                 classname = re.search(r" (.*?),", group).groups()[0]
                 params = re.search(r",(.*)", group).groups()[0]
-                print('<h2 id="' + classname + '" class="class">Class: ' + classname + '(<span class="params">' + params + '</span></h2>')
+                print(
+                    '<h2 id="'
+                    + classname
+                    + '" class="class">Class: '
+                    + classname
+                    + '(<span class="params">'
+                    + params
+                    + "</span></h2>"
+                )
 
-            print (match.group(1))
+            print(match.group(1))
+
 
 #    split = re.split(regex_inside, contents)
 #
 #    for i, item in enumerate(split):
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     expand(sys.argv[1])
-
