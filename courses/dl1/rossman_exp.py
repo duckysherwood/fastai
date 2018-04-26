@@ -138,11 +138,11 @@ def get_contin_one():
     return contin_inp, contin_out
 
 
-def train(model, map_train, map_valid, bs=128, ne=10):
+def train(model, map_train, map_valid, batch_size=128, ne=10):
     return model.fit(
         map_train,
         y_trn,
-        batch_size=bs,
+        batch_size=batch_size,
         nb_epoch=ne,
         verbose=0,
         validation_data=(map_valid, y_val),
@@ -159,16 +159,16 @@ def get_model():
         cont_out = [contin_out]
         cont_inp = [contin_inp]
 
-    embs = [get_emb(feat) for feat in cat_map_fit.features]
-    x = merge([emb for inp, emb in embs] + cont_out, mode="concat")
+    embatch_size = [get_emb(feat) for feat in cat_map_fit.features]
+    x = merge([emb for inp, emb in embatch_size] + cont_out, mode="concat")
 
     x = Dropout(0.02)(x)
     x = Dense(1000, activation="relu", init="uniform")(x)
     x = Dense(500, activation="relu", init="uniform")(x)
     x = Dense(1, activation="sigmoid")(x)
 
-    model = Model([inp for inp, emb in embs] + cont_inp, x)
-    model.compile("adam", "mean_absolute_error")
+    model = Model([inp for inp, emb in embatch_size] + cont_inp, x)
+    model.compile("adam", "mean_abatch_sizeolute_error")
     # model.compile(Adam(), 'mse')
     return model
 

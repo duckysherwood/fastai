@@ -5,7 +5,7 @@ from dataset_pt import *
 from sgdr_pt import *
 from planet import *
 
-bs = 64
+batch_size = 64
 f_model = resnet34
 path = "/data/jhoward/fast/planet/"
 cv_idx = int(sys.argv[1])
@@ -17,8 +17,8 @@ n = len(list(open(f"{path}train_v2.csv"))) - 1
 
 def train_image_size(image_size, load=None, save_name=None, suf=None):
     print(f"\n***** {image_size} *****")
-    # data=get_data_pad(f_model, path, image_size, bs, n, cv_idx)
-    data = get_data_zoom(f_model, path, image_size, bs, n, cv_idx)
+    # data=get_data_pad(f_model, path, image_size, batch_size, n, cv_idx)
+    data = get_data_zoom(f_model, path, image_size, batch_size, n, cv_idx)
     learn = Learner.pretrained_convnet(f_model, data, metrics=[f2])
     if load:
         learn.load(f"{load}_{cv_idx}{suf}")

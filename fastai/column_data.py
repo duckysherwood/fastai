@@ -67,14 +67,14 @@ class ColumnarDataset(Dataset):
 
 class ColumnarModelData(ModelData):
 
-    def __init__(self, path, trn_ds, val_ds, bs, test_ds=None, shuffle=True):
+    def __init__(self, path, trn_ds, val_ds, batch_size, test_ds=None, shuffle=True):
         test_dl = DataLoader(
-            test_ds, bs, shuffle=False, num_workers=1
+            test_ds, batch_size, shuffle=False, num_workers=1
         ) if test_ds is not None else None
         super().__init__(
             path,
-            DataLoader(trn_ds, bs, shuffle=shuffle, num_workers=1),
-            DataLoader(val_ds, bs * 2, shuffle=False, num_workers=1),
+            DataLoader(trn_ds, batch_size, shuffle=shuffle, num_workers=1),
+            DataLoader(val_ds, batch_size * 2, shuffle=False, num_workers=1),
             test_dl,
         )
 
@@ -87,7 +87,7 @@ class ColumnarModelData(ModelData):
         y,
         is_reg=True,
         is_multi=False,
-        bs=64,
+        batch_size=64,
         test_xs=None,
         shuffle=True,
     ):
@@ -103,7 +103,7 @@ class ColumnarModelData(ModelData):
             PassthruDataset(
                 *(val_xs.T), val_y, is_reg=is_reg, is_multi=is_multi
             ),
-            bs=bs,
+            batch_size=batch_size,
             shuffle=shuffle,
             test_ds=test_ds,
         )
@@ -117,7 +117,7 @@ class ColumnarModelData(ModelData):
         trn_y,
         val_y,
         cat_flds,
-        bs,
+        batch_size,
         is_reg,
         is_multi,
         test_df=None,
@@ -133,7 +133,7 @@ class ColumnarModelData(ModelData):
             ColumnarDataset.from_data_frame(
                 val_df, cat_flds, val_y, is_reg, is_multi
             ),
-            bs,
+            batch_size,
             test_ds=test_ds,
         )
 
@@ -145,7 +145,7 @@ class ColumnarModelData(ModelData):
         df,
         y,
         cat_flds,
-        bs,
+        batch_size,
         is_reg=True,
         is_multi=False,
         test_df=None,
@@ -158,7 +158,7 @@ class ColumnarModelData(ModelData):
             trn_y,
             val_y,
             cat_flds,
-            bs,
+            batch_size,
             is_reg,
             is_multi,
             test_df=test_df,
@@ -215,10 +215,10 @@ class MixedInputModel(nn.Module):
         is_multi=False,
     ):
         super().__init__()
-        self.embs = nn.ModuleList([nn.Embedding(c, s) for c, s in emb_szs])
-        for emb in self.embs:
+        self.embatch_size = nn.ModuleList([nn.Embedding(c, s) for c, s in emb_szs])
+        for emb in self.embatch_size:
             emb_init(emb)
-        n_emb = sum(e.embedding_dim for e in self.embs)
+        n_emb = sum(e.embedding_dim for e in self.embatch_size)
         self.n_emb, self.n_cont = n_emb, n_cont
 
         szs = [n_emb + n_cont] + szs
@@ -240,7 +240,7 @@ class MixedInputModel(nn.Module):
 
     def forward(self, x_cat, x_cont):
         if self.n_emb != 0:
-            x = [e(x_cat[:, i]) for i, e in enumerate(self.embs)]
+            x = [e(x_cat[:, i]) for i, e in enumerate(self.embatch_size)]
             x = torch.cat(x, 1)
             x = self.emb_drop(x)
         if self.n_cont != 0:
@@ -286,7 +286,7 @@ class StructuredModel(BasicModel):
 
     def get_layer_groups(self):
         m = self.model
-        return [m.embs, children(m.lins) + children(m.bns), m.outp]
+        return [m.embatch_size, children(m.lins) + children(m.bns), m.outp]
 
 
 class CollabFilterDataset(Dataset):
@@ -329,10 +329,10 @@ class CollabFilterDataset(Dataset):
     def __getitem__(self, idx):
         return [o[idx] for o in self.cols]
 
-    def get_data(self, val_idxs, bs):
+    def get_data(self, val_idxs, batch_size):
         val, trn = zip(*split_by_idx(val_idxs, *self.cols))
         return ColumnarModelData(
-            self.path, PassthruDataset(*trn), PassthruDataset(*val), bs
+            self.path, PassthruDataset(*trn), PassthruDataset(*val), batch_size
         )
 
     def get_model(self, n_factors):
@@ -345,9 +345,9 @@ class CollabFilterDataset(Dataset):
         )
         return CollabFilterModel(to_gpu(model))
 
-    def get_learner(self, n_factors, val_idxs, bs, **kwargs):
+    def get_learner(self, n_factors, val_idxs, batch_size, **kwargs):
         return CollabFilterLearner(
-            self.get_data(val_idxs, bs), self.get_model(n_factors), **kwargs
+            self.get_data(val_idxs, batch_size), self.get_model(n_factors), **kwargs
         )
 
 

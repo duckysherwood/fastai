@@ -163,7 +163,7 @@ def dict_source(folder, fnames, csv_labels, suffix="", continuous=False):
 
 
 class BaseDataset(Dataset):
-    """An abstract class representing a fastai dataset, it extends torch.utils.data.Dataset."""
+    """An abatch_sizetract class representing a fastai dataset, it extends torch.utils.data.Dataset."""
 
     def __init__(self, transform=None):
         self.transform = transform
@@ -189,27 +189,27 @@ class BaseDataset(Dataset):
     def get(self, tfm, x, y):
         return (x, y) if tfm is None else tfm(x, y)
 
-    @abstractmethod
+    @abatch_sizetractmethod
     def get_n(self):
         """Return number of elements in the dataset == len(self)."""
         raise NotImplementedError
 
-    @abstractmethod
+    @abatch_sizetractmethod
     def get_c(self):
         """Return number of classes in a dataset."""
         raise NotImplementedError
 
-    @abstractmethod
+    @abatch_sizetractmethod
     def get_image_size(self):
         """Return maximum size of an image in a dataset."""
         raise NotImplementedError
 
-    @abstractmethod
+    @abatch_sizetractmethod
     def get_x(self, i):
         """Return i-th example (image, wav, etc)."""
         raise NotImplementedError
 
-    @abstractmethod
+    @abatch_sizetractmethod
     def get_y(self, i):
         """Return i-th label."""
         raise NotImplementedError
@@ -398,9 +398,9 @@ class ModelData():
 
 class ImageData(ModelData):
 
-    def __init__(self, path, datasets, bs, num_workers, classes):
+    def __init__(self, path, datasets, batch_size, num_workers, classes):
         trn_ds, val_ds, fix_ds, aug_ds, test_ds, test_aug_ds = datasets
-        self.path, self.bs, self.num_workers, self.classes = path, bs, num_workers, classes
+        self.path, self.batch_size, self.num_workers, self.classes = path, batch_size, num_workers, classes
         self.trn_dl, self.val_dl, self.fix_dl, self.aug_dl, self.test_dl, self.test_aug_dl = [
             self.get_dl(ds, shuf)
             for ds, shuf in [
@@ -418,7 +418,7 @@ class ImageData(ModelData):
             return None
         return DataLoader(
             ds,
-            batch_size=self.bs,
+            batch_size=self.batch_size,
             shuffle=shuffle,
             num_workers=self.num_workers,
             pin_memory=False,
@@ -447,7 +447,7 @@ class ImageData(ModelData):
             new_ds.append(self.resized(dl, targ_get_image_size, new_path))
         t.close()
         return self.__class__(
-            new_ds[0].path, new_ds, self.bs, self.num_workers, self.classes
+            new_ds[0].path, new_ds, self.batch_size, self.num_workers, self.classes
         )
 
     @staticmethod
@@ -481,7 +481,7 @@ class ImageClassifierData(ImageData):
         path,
         trn,
         val,
-        bs=64,
+        batch_size=64,
         tfms=(None, None),
         classes=None,
         num_workers=4,
@@ -494,7 +494,7 @@ class ImageClassifierData(ImageData):
             trn: a tuple of training data matrix and target label/classification array (e.g. `trn=(x,y)` where `x` has the
                 shape of `(5000, 784)` and `y` has the shape of `(5000,)`)
             val: a tuple of validation data matrix and target label/classification array.
-            bs: batch size
+            batch_size: batch size
             tfms: transformations (for data augmentations). e.g. output of `tfms_from_model`
             classes: a list of all labels/classifications
             num_workers: a number of workers
@@ -504,13 +504,13 @@ class ImageClassifierData(ImageData):
             ImageClassifierData
         """
         datasets = cls.get_ds(ArraysIndexDataset, trn, val, tfms, test=test)
-        return cls(path, datasets, bs, num_workers, classes=classes)
+        return cls(path, datasets, batch_size, num_workers, classes=classes)
 
     @classmethod
     def from_paths(
         cls,
         path,
-        bs=64,
+        batch_size=64,
         tfms=(None, None),
         trn_name="train",
         val_name="valid",
@@ -522,7 +522,7 @@ class ImageClassifierData(ImageData):
 
         Arguments:
             path: a root path of the data (used for storing trained models, precomputed values, etc)
-            bs: batch size
+            batch_size: batch size
             tfms: transformations (for data augmentations). e.g. output of `tfms_from_model`
             trn_name: a name of the folder that contains training images.
             val_name:  a name of the folder that contains validation images.
@@ -547,7 +547,7 @@ class ImageClassifierData(ImageData):
         datasets = cls.get_ds(
             FilesIndexArrayDataset, trn, val, tfms, path=path, test=test
         )
-        return cls(path, datasets, bs, num_workers, classes=trn[2])
+        return cls(path, datasets, batch_size, num_workers, classes=trn[2])
 
     @classmethod
     def from_csv(
@@ -555,7 +555,7 @@ class ImageClassifierData(ImageData):
         path,
         folder,
         csv_fname,
-        bs=64,
+        batch_size=64,
         tfms=(None, None),
         val_idxs=None,
         suffix="",
@@ -573,7 +573,7 @@ class ImageClassifierData(ImageData):
             path: a root path of the data (used for storing trained models, precomputed values, etc)
             folder: a name of the folder in which training images are contained.
             csv_fname: a name of the CSV file which contains target labels.
-            bs: batch size
+            batch_size: batch size
             tfms: transformations (for data augmentations). e.g. output of `tfms_from_model`
             val_idxs: index of images to be used for validation. e.g. output of `get_cv_idxs`.
                 If None, default arguments to get_cv_idxs are used.
@@ -600,7 +600,7 @@ class ImageClassifierData(ImageData):
             num_workers=num_workers,
             suffix=suffix,
             tfms=tfms,
-            bs=bs,
+            batch_size=batch_size,
             continuous=continuous,
         )
 
@@ -616,7 +616,7 @@ class ImageClassifierData(ImageData):
         num_workers=8,
         suffix="",
         tfms=(None, None),
-        bs=64,
+        batch_size=64,
         continuous=False,
     ):
         val_idxs = get_cv_idxs(len(fnames)) if val_idxs is None else val_idxs
@@ -639,7 +639,7 @@ class ImageClassifierData(ImageData):
             path=path,
             test=test_fnames,
         )
-        return cls(path, datasets, bs, num_workers, classes=classes)
+        return cls(path, datasets, batch_size, num_workers, classes=classes)
 
 
 def split_by_idx(idxs, *a):

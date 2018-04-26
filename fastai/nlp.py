@@ -147,8 +147,8 @@ def flip_tensor(x, dim):
 
 class LanguageModelLoader():
 
-    def __init__(self, ds, bs, bptt, backwards=False):
-        self.bs, self.bptt, self.backwards = bs, bptt, backwards
+    def __init__(self, ds, batch_size, bptt, backwards=False):
+        self.batch_size, self.bptt, self.backwards = batch_size, bptt, backwards
         text = sum([o.text for o in ds], [])
         fld = ds.fields["text"]
         nums = fld.numericalize(
@@ -176,9 +176,9 @@ class LanguageModelLoader():
         return res
 
     def batchify(self, data):
-        nb = data.size(0) // self.bs
-        data = data[:nb * self.bs]
-        data = data.view(self.bs, -1).t().contiguous()
+        nb = data.size(0) // self.batch_size
+        data = data[:nb * self.batch_size]
+        data = data.view(self.batch_size, -1).t().contiguous()
         if self.backwards:
             data = flip_tensor(data, 0)
         return to_gpu(data)
@@ -268,7 +268,7 @@ class LanguageModelData():
         Example:
             >> TEXT = data.Field(lower=True, tokenize=spacy_tok)
             >> FILES = dict(train=TRN_PATH, validation=VAL_PATH, test=VAL_PATH)
-            >> md = LanguageModelData.from_text_files(PATH, TEXT, **FILES, bs=64, bptt=70, min_freq=10)
+            >> md = LanguageModelData.from_text_files(PATH, TEXT, **FILES, batch_size=64, bptt=70, min_freq=10)
 
             >> em_unused_size = 200  # size of each embedding vector
             >> nh = 500     # number of hidden activations per layer
@@ -291,7 +291,7 @@ class LanguageModelData():
         trn_ds,
         val_ds,
         test_ds,
-        bs,
+        batch_size,
         bptt,
         backwards=False,
         **kwargs,
@@ -310,11 +310,11 @@ class LanguageModelData():
                 trn_ds (Dataset): training dataset
                 val_ds (Dataset): validation dataset
                 test_ds (Dataset): testing dataset
-                bs (int): batch size
+                batch_size (int): batch size
                 bptt (int): back propagation through time
                 kwargs: other arguments
         """
-        self.bs = bs
+        self.batch_size = batch_size
         self.path = path
         self.trn_ds = trn_ds
         self.val_ds = val_ds
@@ -326,7 +326,7 @@ class LanguageModelData():
         self.nt = len(field.vocab)
 
         factory = lambda ds: LanguageModelLoader(
-            ds, bs, bptt, backwards=backwards
+            ds, batch_size, bptt, backwards=backwards
         )
         self.trn_dl = factory(self.trn_ds)
         self.val_dl = factory(self.val_ds)
@@ -361,7 +361,7 @@ class LanguageModelData():
         train_df,
         val_df,
         test_df=None,
-        bs=64,
+        batch_size=64,
         bptt=70,
         **kwargs,
     ):
@@ -373,7 +373,7 @@ class LanguageModelData():
             test_df=test_df,
             keep_nones=True,
         )
-        return cls(path, field, trn_ds, val_ds, test_ds, bs, bptt, **kwargs)
+        return cls(path, field, trn_ds, val_ds, test_ds, batch_size, bptt, **kwargs)
 
     @classmethod
     def from_text_files(
@@ -383,7 +383,7 @@ class LanguageModelData():
         train,
         validation,
         test=None,
-        bs=64,
+        batch_size=64,
         bptt=70,
         **kwargs,
     ):
@@ -391,12 +391,12 @@ class LanguageModelData():
             supported nlp task.
 
         Args:
-            path (str): the absolute path in which temporary model data will be saved
+            path (str): the abatch_sizeolute path in which temporary model data will be saved
             field (Field): torchtext field
             train (str): file location of the training data
             validation (str): file location of the validation data
             test (str): file location of the testing data
-            bs (int): batch size to use
+            batch_size (int): batch size to use
             bptt (int): back propagation through time hyper-parameter
             kwargs: other arguments
 
@@ -416,7 +416,7 @@ class LanguageModelData():
             validation=validation,
             test=test,
         )
-        return cls(path, field, trn_ds, val_ds, test_ds, bs, bptt, **kwargs)
+        return cls(path, field, trn_ds, val_ds, test_ds, batch_size, bptt, **kwargs)
 
 
 class TextDataLoader():
@@ -450,13 +450,13 @@ class TextData(ModelData):
 
     @classmethod
     def from_splits(
-        cls, path, splits, bs, text_name="text", label_name="label"
+        cls, path, splits, batch_size, text_name="text", label_name="label"
     ):
         text_fld = splits[0].fields[text_name]
         label_fld = splits[0].fields[label_name]
         if hasattr(label_fld, "build_vocab"):
             label_fld.build_vocab(splits[0])
-        iters = torchtext.data.BucketIterator.splits(splits, batch_size=bs)
+        iters = torchtext.data.BucketIterator.splits(splits, batch_size=batch_size)
         trn_iter, val_iter, test_iter = iters[0], iters[1], None
         test_dl = None
         if len(iters) == 3:
@@ -465,7 +465,7 @@ class TextData(ModelData):
         trn_dl = TextDataLoader(trn_iter, text_name, label_name)
         val_dl = TextDataLoader(val_iter, text_name, label_name)
         obj = cls.from_dls(path, trn_dl, val_dl, test_dl)
-        obj.bs = bs
+        obj.batch_size = batch_size
         obj.pad_idx = text_fld.vocab.stoi[text_fld.pad_token]
         obj.nt = len(text_fld.vocab)
         obj.c = (

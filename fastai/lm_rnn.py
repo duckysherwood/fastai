@@ -53,7 +53,7 @@ class RNN_Encoder(nn.Module):
         """ Default constructor for the RNN_Encoder class
 
             Args:
-                bs (int): batch size of input data
+                batch_size (int): batch size of input data
                 ntoken (int): number of vocabulary (or tokens) in the source dataset
                 emb_sz (int): the embedding size to use to encode each token
                 nhid (int): number of hidden activation per LSTM layer
@@ -70,7 +70,7 @@ class RNN_Encoder(nn.Module):
 
         super().__init__()
         self.ndir = 2 if bidir else 1
-        self.bs = 1
+        self.batch_size = 1
         self.encoder = nn.Embedding(ntoken, emb_sz, padding_idx=pad_token)
         self.encoder_with_dropout = EmbeddingDropout(self.encoder)
         self.rnns = [
@@ -103,9 +103,9 @@ class RNN_Encoder(nn.Module):
             raw_outputs (tuple(list (Tensor), list(Tensor)): list of tensors evaluated from each RNN layer without using
             dropouth, list of tensors evaluated from each RNN layer using dropouth,
         """
-        sl, bs = input.size()
-        if bs != self.bs:
-            self.bs = bs
+        sl, batch_size = input.size()
+        if batch_size != self.batch_size:
+            self.batch_size = batch_size
             self.reset()
 
         emb = self.encoder_with_dropout(
@@ -132,7 +132,7 @@ class RNN_Encoder(nn.Module):
     def one_hidden(self, l):
         nh = (self.nhid if l != self.nlayers - 1 else self.emb_sz) // self.ndir
         return Variable(
-            self.weights.new(self.ndir, self.bs, nh).zero_(),
+            self.weights.new(self.ndir, self.batch_size, nh).zero_(),
             volatile=not self.training,
         )
 
@@ -154,7 +154,7 @@ class MultiBatchRNN(RNN_Encoder):
         return [torch.cat([l[si] for l in arrs]) for si in range(len(arrs[0]))]
 
     def forward(self, input):
-        sl, bs = input.size()
+        sl, batch_size = input.size()
         for l in self.hidden:
             for h in l:
                 h.data.zero_()
@@ -211,16 +211,16 @@ class PoolingLinearClassifier(nn.Module):
             ]
         )
 
-    def pool(self, x, bs, is_max):
+    def pool(self, x, batch_size, is_max):
         f = F.adaptive_max_pool1d if is_max else F.adaptive_avg_pool1d
-        return f(x.permute(1, 2, 0), (1,)).view(bs, -1)
+        return f(x.permute(1, 2, 0), (1,)).view(batch_size, -1)
 
     def forward(self, input):
         raw_outputs, outputs = input
         output = outputs[-1]
-        sl, bs, _ = output.size()
-        avgpool = self.pool(output, bs, False)
-        mxpool = self.pool(output, bs, True)
+        sl, batch_size, _ = output.size()
+        avgpool = self.pool(output, batch_size, False)
+        mxpool = self.pool(output, batch_size, True)
         x = torch.cat([output[-1], mxpool, avgpool], 1)
         for l in self.layers:
             l_x = l(x)

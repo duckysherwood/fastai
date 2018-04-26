@@ -12,7 +12,7 @@ def train_lm(
     prefix,
     cuda_id,
     cl=1,
-    bs=64,
+    batch_size=64,
     backwards=False,
     lr=3e-4,
     startat=0,
@@ -20,7 +20,7 @@ def train_lm(
     preload=True,
 ):
     print(
-        f"prefix {prefix}; cuda_id {cuda_id}; cl {cl}; bs {bs}; backwards {backwards} sampled {sampled} "
+        f"prefix {prefix}; cuda_id {cuda_id}; cl {cl}; batch_size {batch_size}; backwards {backwards} sampled {sampled} "
         f"lr {lr} startat {startat}"
     )
     torch.cuda.set_device(cuda_id)
@@ -47,9 +47,9 @@ def train_lm(
     itos = pickle.load(open(PATH / "tmp/itos.pkl", "rb"))
     vs = len(itos)
 
-    trn_dl = LanguageModelLoader(trn_lm, bs, bptt)
-    val_dl = LanguageModelLoader(val_lm, bs // 5 if sampled else bs, bptt)
-    md = LanguageModelData(PATH, 1, vs, trn_dl, val_dl, bs=bs, bptt=bptt)
+    trn_dl = LanguageModelLoader(trn_lm, batch_size, bptt)
+    val_dl = LanguageModelLoader(val_lm, batch_size // 5 if sampled else batch_size, bptt)
+    md = LanguageModelData(PATH, 1, vs, trn_dl, val_dl, batch_size=batch_size, bptt=bptt)
 
     tprs = get_prs(trn_lm, vs)
     drops = np.array([0.25, 0.1, 0.2, 0.02, 0.15]) * 0.5

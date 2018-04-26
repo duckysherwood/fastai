@@ -41,7 +41,7 @@ def train_lm(
     cl=1,
     pretrain="wikitext-103-nopl",
     lm_id="",
-    bs=64,
+    batch_size=64,
     dropmult=1.0,
     backwards=False,
     lr=0.4e-3,
@@ -58,7 +58,7 @@ def train_lm(
     figshare=False,
 ):
     print(
-        f"prefix {prefix}; cuda_id {cuda_id}; cl {cl}; bs {bs}; backwards {backwards} "
+        f"prefix {prefix}; cuda_id {cuda_id}; cl {cl}; batch_size {batch_size}; backwards {backwards} "
         f"dropmult {dropmult}; lr {lr}; preload {preload}; bpe {bpe}; startat {startat} "
         f"pretrain {pretrain}; use_clr {use_clr}; notrain {notrain}; joined {joined} "
         f"early stopping {early_stopping}, figshare {figshare}"
@@ -119,9 +119,9 @@ def train_lm(
         itos = pickle.load(open(f"{PATH}tmp/itos.pkl", "rb"))
         vs = len(itos)
 
-    trn_dl = LanguageModelLoader(trn_lm, bs, bptt)
-    val_dl = LanguageModelLoader(val_lm, bs, bptt)
-    md = LanguageModelData(PATH, 1, vs, trn_dl, val_dl, bs=bs, bptt=bptt)
+    trn_dl = LanguageModelLoader(trn_lm, batch_size, bptt)
+    val_dl = LanguageModelLoader(val_lm, batch_size, bptt)
+    md = LanguageModelData(PATH, 1, vs, trn_dl, val_dl, batch_size=batch_size, bptt=bptt)
 
     drops = np.array([0.25, 0.1, 0.2, 0.02, 0.15]) * dropmult
 

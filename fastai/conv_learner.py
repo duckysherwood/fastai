@@ -280,7 +280,7 @@ class ConvLearner(Learner):
             self.data.path,
             (act, self.data.trn_y),
             (val_act, self.data.val_y),
-            self.data.bs,
+            self.data.batch_size,
             classes=self.data.classes,
             test=test_act if self.data.test_dl else None,
             num_workers=8,

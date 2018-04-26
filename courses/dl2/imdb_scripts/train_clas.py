@@ -15,7 +15,7 @@ def train_clas(
     cuda_id,
     lm_id="",
     clas_id=None,
-    bs=64,
+    batch_size=64,
     cl=1,
     backwards=False,
     startat=0,
@@ -35,7 +35,7 @@ def train_clas(
     if clas_id is None:
         clas_id = lm_id
     print(
-        f"prefix {prefix}; cuda_id {cuda_id}; lm_id {lm_id}; clas_id {clas_id}; bs {bs}; cl {cl}; backwards {backwards}; "
+        f"prefix {prefix}; cuda_id {cuda_id}; lm_id {lm_id}; clas_id {clas_id}; batch_size {batch_size}; cl {cl}; backwards {backwards}; "
         f"dropmult {dropmult} unfreeze {unfreeze} startat {startat}; pretrain {pretrain}; bpe {bpe}; use_clr {use_clr};"
         f"use_regular_schedule {use_regular_schedule}; use_discriminative {use_discriminative}; last {last};"
         f"chain_thaw {chain_thaw}; from_scratch {from_scratch}; train_file_id {train_file_id}"
@@ -82,19 +82,19 @@ def train_clas(
     trn_ds = TextDataset(trn_sent, trn_lbls)
     val_ds = TextDataset(val_sent, val_lbls)
     trn_samp = SortishSampler(
-        trn_sent, key=lambda x: len(trn_sent[x]), bs=bs // 2
+        trn_sent, key=lambda x: len(trn_sent[x]), batch_size=batch_size // 2
     )
     val_samp = SortSampler(val_sent, key=lambda x: len(val_sent[x]))
     trn_dl = DataLoader(
         trn_ds,
-        bs // 2,
+        batch_size // 2,
         transpose=True,
         num_workers=1,
         pad_idx=1,
         sampler=trn_samp,
     )
     val_dl = DataLoader(
-        val_ds, bs, transpose=True, num_workers=1, pad_idx=1, sampler=val_samp
+        val_ds, batch_size, transpose=True, num_workers=1, pad_idx=1, sampler=val_samp
     )
     md = ModelData(PATH, trn_dl, val_dl)
 

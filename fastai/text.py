@@ -164,20 +164,20 @@ class SortishSampler(Sampler):
     to hold the next in the sequence.
     """
 
-    def __init__(self, data_source, key, bs):
-        self.data_source, self.key, self.bs = data_source, key, bs
+    def __init__(self, data_source, key, batch_size):
+        self.data_source, self.key, self.batch_size = data_source, key, batch_size
 
     def __len__(self):
         return len(self.data_source)
 
     def __iter__(self):
         idxs = np.random.permutation(len(self.data_source))
-        sz = self.bs * 50
+        sz = self.batch_size * 50
         ck_idx = [idxs[i:i + sz] for i in range(0, len(idxs), sz)]
         sort_idx = sum(
             [sorted(s, key=self.key, reverse=True) for s in ck_idx], []
         )
-        sz = self.bs
+        sz = self.batch_size
         ck_idx = [sort_idx[i:i + sz] for i in range(0, len(sort_idx), sz)]
         sort_idx = np.concatenate(np.random.permutation(ck_idx[1:]))
         sort_idx = np.concatenate((ck_idx[0], sort_idx))
@@ -190,8 +190,8 @@ class LanguageModelLoader():
     allocates cuda memory in order to prevent multiple buffers from being created as the batch width grows.
     """
 
-    def __init__(self, nums, bs, bptt, backwards=False):
-        self.bs, self.bptt, self.backwards = bs, bptt, backwards
+    def __init__(self, nums, batch_size, bptt, backwards=False):
+        self.batch_size, self.bptt, self.backwards = batch_size, bptt, backwards
         self.data = self.batchify(nums)
         self.i, self.iter = 0, 0
         self.n = len(self.data)
@@ -213,9 +213,9 @@ class LanguageModelLoader():
         return self.n // self.bptt - 1
 
     def batchify(self, data):
-        nb = data.shape[0] // self.bs
-        data = np.array(data[:nb * self.bs])
-        data = data.reshape(self.bs, -1).T
+        nb = data.shape[0] // self.batch_size
+        data = np.array(data[:nb * self.batch_size])
+        data = data.reshape(self.batch_size, -1).T
         if self.backwards:
             data = data[::-1]
         return T(data)
