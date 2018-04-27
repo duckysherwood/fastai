@@ -248,7 +248,7 @@ class ConvLearner(Learner):
         return res
 
     def get_activations(self, force=False):
-        tmpl = f"_{self.models.name}_{self.data.sz}.bc"
+        tmpl = f"_{self.models.name}_{self.data.image_size}.bc"
         # TODO: Somehow check that directory names haven't changed (e.g. added test set)
         names = [
             os.path.join(self.tmp_path, p + tmpl)

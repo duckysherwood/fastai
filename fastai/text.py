@@ -172,13 +172,13 @@ class SortishSampler(Sampler):
 
     def __iter__(self):
         idxs = np.random.permutation(len(self.data_source))
-        sz = self.batch_size * 50
-        ck_idx = [idxs[i:i + sz] for i in range(0, len(idxs), sz)]
+        superbatch_size = self.batch_size * 50
+        ck_idx = [idxs[i:i + superbatch_size] for i in range(0, len(idxs), superbatch_size)]
         sort_idx = sum(
             [sorted(s, key=self.key, reverse=True) for s in ck_idx], []
         )
-        sz = self.batch_size
-        ck_idx = [sort_idx[i:i + sz] for i in range(0, len(sort_idx), sz)]
+        superbatch_size = self.batch_size
+        ck_idx = [sort_idx[i:i + superbatch_size] for i in range(0, len(sort_idx), superbatch_size)]
         sort_idx = np.concatenate(np.random.permutation(ck_idx[1:]))
         sort_idx = np.concatenate((ck_idx[0], sort_idx))
         return iter(sort_idx)
