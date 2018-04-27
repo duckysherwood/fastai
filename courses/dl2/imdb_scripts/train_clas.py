@@ -223,7 +223,7 @@ def train_clas(
         use_clr=(8, 8) if use_clr else None,
     )
     print("Plotting lrs...")
-    learn.sched.plot_lr()
+    learn.sched.plot_learning_rate()
     learn.save(f"{PRE}{clas_id}clas_1")
 
 

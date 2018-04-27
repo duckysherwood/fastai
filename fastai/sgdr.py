@@ -122,7 +122,7 @@ class LossRecorder(Callback):
                 os.path.join(self.save_path, "losses.npy"), self.losses[10:]
             )
 
-    def plot_lr(self):
+    def plot_learning_rate(self):
         if not in_ipynb():
             plt.switch_backend("agg")
         if self.record_mom:
@@ -647,7 +647,7 @@ class OptimScheduler(LossRecorder):
     def on_phase_end(self):
         self.phase += 1
 
-    def plot_lr(self, show_text=True, show_moms=True):
+    def plot_learning_rate(self, show_text=True, show_moms=True):
         """
         Plots the lr rate/momentum schedule
         """

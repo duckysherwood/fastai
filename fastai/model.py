@@ -150,7 +150,7 @@ def fit(
     batch_num, avg_loss = 0, 0.
     for cb in callbacks:
         cb.on_train_begin()
-    names = ["epoch", "trn_loss", "val_loss"] + [f.__name__ for f in metrics]
+    names = ["epoch", "training_loss", "validation_loss"] + [f.__name__ for f in metrics]
     if swa_model is not None:
         swa_names = ["swa_loss"] + [f"swa_{f.__name__}" for f in metrics]
         names += swa_names
