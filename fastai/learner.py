@@ -403,12 +403,12 @@ class Learner():
 
     def warm_up(self, lr, wds=None):
         layer_opt = self.get_layer_opt(lr / 4, wds)
-        self.sched = LR_Finder(
+        self.sched = find_learning_rateer(
             layer_opt, len(self.data.training_downloader), lr, linear=True
         )
         return self.fit_gen(self.model, self.data, layer_opt, 1)
 
-    def lr_find(
+    def find_learning_rate(
         self, start_lr=1e-5, end_lr=10, wds=None, linear=False, **kwargs
     ):
         """Helps you find an optimal learning rate for a model.
@@ -427,16 +427,16 @@ class Learner():
         Examples:
             As training moves us closer to the optimal weights for a model,
             the optimal learning rate will be smaller. We can take advantage of
-            that knowledge and provide lr_find() with a starting learning rate
+            that knowledge and provide find_learning_rate() with a starting learning rate
             1000x smaller than the model's current learning rate as such:
 
-            >> learn.lr_find(lr/1000)
+            >> learn.find_learning_rate(lr/1000)
 
             >> lrs = np.array([ 1e-4, 1e-3, 1e-2 ])
-            >> learn.lr_find(lrs / 1000)
+            >> learn.find_learning_rate(lrs / 1000)
 
         Notes:
-            lr_find() may finish before going through each batch of examples if
+            find_learning_rate() may finish before going through each batch of examples if
             the loss decreases enough.
 
         .. _Cyclical Learning Rates for Training Neural Networks:
@@ -445,13 +445,13 @@ class Learner():
         """
         self.save("tmp")
         layer_opt = self.get_layer_opt(start_lr, wds)
-        self.sched = LR_Finder(
+        self.sched = find_learning_rateer(
             layer_opt, len(self.data.training_downloader), end_lr, linear=linear
         )
         self.fit_gen(self.model, self.data, layer_opt, 1, **kwargs)
         self.load("tmp")
 
-    def lr_find2(
+    def find_learning_rate2(
         self,
         start_lr=1e-5,
         end_lr=10,
@@ -461,11 +461,11 @@ class Learner():
         stop_dv=True,
         **kwargs,
     ):
-        """A variant of lr_find() that helps find the best learning rate. It doesn't do
+        """A variant of find_learning_rate() that helps find the best learning rate. It doesn't do
         an epoch but a fixed num of iterations (which may be more or less than an epoch
         depending on your data).
         At each step, it computes the validation loss and the metrics on the next
-        batch of the validation data, so it's slower than lr_find().
+        batch of the validation data, so it's slower than find_learning_rate().
 
         Args:
             start_lr (float/numpy array) : Passing in a numpy array allows you
@@ -477,7 +477,7 @@ class Learner():
         """
         self.save("tmp")
         layer_opt = self.get_layer_opt(start_lr, wds)
-        self.sched = LR_Finder2(
+        self.sched = LearningRateFinder2(
             layer_opt,
             num_it,
             end_lr,

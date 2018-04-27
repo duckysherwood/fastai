@@ -173,7 +173,7 @@ class LR_Updater(LossRecorder):
         raise NotImplementedError
 
 
-class LR_Finder(LR_Updater):
+class LearningRateFinder(LR_Updater):
 
     def __init__(self, layer_opt, nb, end_lr=10, linear=False, metrics=[]):
         self.linear, self.stop_dv = linear, True
@@ -204,7 +204,7 @@ class LR_Finder(LR_Updater):
         plt.xscale("log")
 
 
-class LR_Finder2(LR_Finder):
+class LearningRateFinder2(LearningRateFinder):
 
     def __init__(
         self, layer_opt, nb, end_lr=10, linear=False, metrics=[], stop_dv=True
