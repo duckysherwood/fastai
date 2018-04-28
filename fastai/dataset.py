@@ -259,7 +259,7 @@ class FilesDataset(BaseDataset):
         super().__init__(transform)
 
     def get_image_size(self):
-        return self.transform.get_image_size
+        return self.transform.image_size
 
     def get_x(self, i):
         return open_image(os.path.join(self.path, self.fnames[i]))
