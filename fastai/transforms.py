@@ -12,8 +12,8 @@ def scale_min(image, targ, interpolation=cv2.INTER_AREA):
     """
     r, c, *_ = image.shape
     ratio = targ / min(r, c)
-    image_side_length = (scale_to(c, ratio, targ), scale_to(r, ratio, targ))
-    return cv2.resize(image, image_side_length, interpolation=interpolation)
+    image_size = (scale_to(c, ratio, targ), scale_to(r, ratio, targ))
+    return cv2.resize(image, image_size, interpolation=interpolation)
 
 
 def zoom_cv(x, z):
@@ -148,11 +148,11 @@ def scale_to(x, ratio, targ):
     return max(math.floor(x * ratio), targ)
 
 
-def crop(image, r, c, image_side_length):
+def crop(image, r, c, image_size):
     """
-    crop imageage into a square of size image_side_length, 
+    crop imageage into a square of size image_size, 
     """
-    return image[r:r + image_side_length, c:c + image_side_length]
+    return image[r:r + image_size, c:c + image_size]
 
 
 def det_dihedral(dih):
@@ -368,18 +368,18 @@ class CenterCrop(CoordTransform):
     This transforms (optionally) transforms x,y at with the same parameters.
     Arguments
     ---------
-        image_side_length: int
+        image_size: int
             size of the crop.
         tfm_y : TfmType
             type of y transformation.
     """
 
-    def __init__(self, image_side_length, tfm_y=TfmType.NO, image_side_length_y=None):
+    def __init__(self, image_size, tfm_y=TfmType.NO, image_size_y=None):
         super().__init__(tfm_y)
-        self.min_imageage_size, self.image_side_length_y = image_side_length, image_side_length_y
+        self.min_imageage_size, self.image_size_y = image_size, image_size_y
 
     def do_transform(self, x, is_y):
-        return center_crop(x, self.image_side_length_y if is_y else self.min_imageage_size)
+        return center_crop(x, self.image_size_y if is_y else self.min_imageage_size)
 
 
 class RandomCrop(CoordTransform):
@@ -394,9 +394,9 @@ class RandomCrop(CoordTransform):
             type of y transformation.
     """
 
-    def __init__(self, targ_image_side_length, tfm_y=TfmType.NO, image_side_length_y=None):
+    def __init__(self, targ_image_size, tfm_y=TfmType.NO, image_size_y=None):
         super().__init__(tfm_y)
-        self.targ_image_side_length, self.image_side_length_y = targ_image_side_length, image_side_length_y
+        self.targ_image_size, self.image_size_y = targ_image_size, image_size_y
 
     def set_state(self):
         self.store.rand_r = random.uniform(0, 1)
@@ -404,10 +404,10 @@ class RandomCrop(CoordTransform):
 
     def do_transform(self, x, is_y):
         r, c, *_ = x.shape
-        image_side_length = self.image_side_length_y if is_y else self.targ_image_side_length
-        start_r = np.floor(self.store.rand_r * (r - image_side_length)).astype(int)
-        start_c = np.floor(self.store.rand_c * (c - image_side_length)).astype(int)
-        return crop(x, start_r, start_c, image_side_length)
+        image_size = self.image_size_y if is_y else self.targ_image_size
+        start_r = np.floor(self.store.rand_r * (r - image_size)).astype(int)
+        start_c = np.floor(self.store.rand_c * (c - image_size)).astype(int)
+        return crop(x, start_r, start_c, image_size)
 
 
 class NoCrop(CoordTransform):
@@ -420,44 +420,44 @@ class NoCrop(CoordTransform):
         tfm_y (TfmType): type of y transformation.
     """
 
-    def __init__(self, image_side_length, tfm_y=TfmType.NO, image_side_length_y=None):
+    def __init__(self, image_size, tfm_y=TfmType.NO, image_size_y=None):
         super().__init__(tfm_y)
-        self.image_side_length, self.image_side_length_y = image_side_length, image_side_length_y
+        self.image_size, self.image_size_y = image_size, image_size_y
 
     def do_transform(self, x, is_y):
         if is_y:
-            return no_crop(x, self.image_side_length_y, cv2.INTER_NEAREST)
+            return no_crop(x, self.image_size_y, cv2.INTER_NEAREST)
         else:
-            return no_crop(x, self.image_side_length, cv2.INTER_AREA)
+            return no_crop(x, self.image_size, cv2.INTER_AREA)
 
 
 class Scale(CoordTransform):
-    """ A transformation that scales the min size to image_side_length.
+    """ A transformation that scales the min size to image_size.
 
     Arguments:
-        image_side_length: int
+        image_size: int
             target size to scale minimageum size.
         tfm_y: TfmType
             type of y transformation.
     """
 
-    def __init__(self, image_side_length, tfm_y=TfmType.NO, image_side_length_y=None):
+    def __init__(self, image_size, tfm_y=TfmType.NO, image_size_y=None):
         super().__init__(tfm_y)
-        self.image_side_length, self.image_side_length_y = image_side_length, image_side_length_y
+        self.image_size, self.image_size_y = image_size, image_size_y
 
     def do_transform(self, x, is_y):
         if is_y:
-            return scale_min(x, self.image_side_length_y, cv2.INTER_NEAREST)
+            return scale_min(x, self.image_size_y, cv2.INTER_NEAREST)
         else:
-            return scale_min(x, self.image_side_length, cv2.INTER_AREA)
+            return scale_min(x, self.image_size, cv2.INTER_AREA)
 
 
 class RandomScale(CoordTransform):
-    """ Scales an imageage so that the min size is a random number between [image_side_length, image_side_length*max_zoom]
+    """ Scales an imageage so that the min size is a random number between [image_size, image_size*max_zoom]
 
     This transforms (optionally) scales x,y at with the same parameters.
     Arguments:
-        image_side_length: int
+        image_size: int
             target size
         max_zoom: float
             float >= 1.0
@@ -467,9 +467,9 @@ class RandomScale(CoordTransform):
             type of y transform
     """
 
-    def __init__(self, image_side_length, max_zoom, p=0.75, tfm_y=TfmType.NO, image_side_length_y=None):
+    def __init__(self, image_size, max_zoom, p=0.75, tfm_y=TfmType.NO, image_size_y=None):
         super().__init__(tfm_y)
-        self.image_side_length, self.max_zoom, self.p, self.image_side_length_y = image_side_length, max_zoom, p, image_side_length_y
+        self.image_size, self.max_zoom, self.p, self.image_size_y = image_size, max_zoom, p, image_size_y
 
     def set_state(self):
         min_z = 1.
@@ -479,15 +479,15 @@ class RandomScale(CoordTransform):
         self.store.mult = random.uniform(
             min_z, max_z
         ) if random.random() < self.p else 1
-        self.store.new_image_side_length = int(self.store.mult * self.image_side_length)
-        if self.image_side_length_y is not None:
-            self.store.new_image_side_length_y = int(self.store.mult * self.image_side_length_y)
+        self.store.new_image_size = int(self.store.mult * self.image_size)
+        if self.image_size_y is not None:
+            self.store.new_image_size_y = int(self.store.mult * self.image_size_y)
 
     def do_transform(self, x, is_y):
         if is_y:
-            return scale_min(x, self.store.new_image_side_length_y, cv2.INTER_NEAREST)
+            return scale_min(x, self.store.new_image_size_y, cv2.INTER_NEAREST)
         else:
-            return scale_min(x, self.store.new_image_side_length, cv2.INTER_AREA)
+            return scale_min(x, self.store.new_image_size, cv2.INTER_AREA)
 
 
 class RandomRotate(CoordTransform):
@@ -703,7 +703,7 @@ class GoogleNetResize(CoordTransform):
     """ Randomly crops an imageage with an aspect ratio and returns a squared resized imageage of size targ 
     
     Arguments:
-        targ_image_side_length: int
+        targ_image_size: int
             target size
         min_area_frac: float < 1.0
             minimageum area of the original imageage for cropping
@@ -719,16 +719,16 @@ class GoogleNetResize(CoordTransform):
 
     def __init__(
         self,
-        targ_image_side_length,
+        targ_image_size,
         min_area_frac=0.08,
         min_aspect_ratio=0.75,
         max_aspect_ratio=1.333,
         flip_hw_p=0.5,
         tfm_y=TfmType.NO,
-        image_side_length_y=None,
+        image_size_y=None,
     ):
         super().__init__(tfm_y)
-        self.targ_image_side_length, self.tfm_y, self.image_side_length_y = targ_image_side_length, tfm_y, image_side_length_y
+        self.targ_image_size, self.tfm_y, self.image_size_y = targ_image_size, tfm_y, image_size_y
         self.min_area_frac, self.min_aspect_ratio, self.max_aspect_ratio, self.flip_hw_p = min_area_frac, min_aspect_ratio, max_aspect_ratio, flip_hw_p
 
     def set_state(self):
@@ -736,7 +736,7 @@ class GoogleNetResize(CoordTransform):
         self.store.fp = random.random() < self.flip_hw_p
 
     def do_transform(self, x, is_y):
-        image_side_length = self.image_side_length_y if is_y else self.targ_image_side_length
+        image_size = self.image_size_y if is_y else self.targ_image_size
         if is_y:
             interpolation = cv2.INTER_NEAREST if self.tfm_y in (
                 TfmType.COORD, TfmType.CLASS
@@ -745,7 +745,7 @@ class GoogleNetResize(CoordTransform):
             interpolation = cv2.INTER_AREA
         return googlenet_resize(
             x,
-            image_side_length,
+            image_size,
             self.min_area_frac,
             self.min_aspect_ratio,
             self.max_aspect_ratio,
@@ -784,18 +784,18 @@ class Transforms():
 
     def __init__(
         self,
-        image_side_length,
+        image_size,
         tfms,
         normalizer,
         denorm,
         crop_type=CropType.CENTER,
         tfm_y=TfmType.NO,
-        image_side_length_y=None,
+        image_size_y=None,
     ):
-        if image_side_length_y is None:
-            image_side_length_y = image_side_length
-        self.image_side_length, self.denorm, self.norm, self.image_side_length_y = image_side_length, denorm, normalizer, image_side_length_y
-        crop_tfm = crop_fn_lu[crop_type](image_side_length, tfm_y, image_side_length_y)
+        if image_size_y is None:
+            image_size_y = image_size
+        self.image_size, self.denorm, self.norm, self.image_size_y = image_size, denorm, normalizer, image_size_y
+        crop_tfm = crop_fn_lu[crop_type](image_size, tfm_y, image_size_y)
         self.tfms = tfms + [crop_tfm, normalizer, ChannelOrder(tfm_y)]
 
     def __call__(self, image, y=None):
@@ -808,13 +808,13 @@ class Transforms():
 def imageage_gen(
     normalizer,
     denorm,
-    image_side_length,
+    image_size,
     tfms=None,
     max_zoom=None,
     pad=0,
     crop_type=None,
     tfm_y=None,
-    image_side_length_y=None,
+    image_size_y=None,
     pad_mode=cv2.BORDER_REFLECT,
 ):
     """
@@ -826,8 +826,8 @@ def imageage_gen(
          imageage normalizing function
      denorm :
          imageage denormalizing function
-     image_side_length :
-         size, image_side_length_y = image_side_length if not specified.
+     image_size :
+         size, image_size_y = image_size if not specified.
      tfms :
          iterable collection of transformation functions
      max_zoom : float,
@@ -838,7 +838,7 @@ def imageage_gen(
          crop type
      tfm_y :
          y axis specific transformations
-     image_side_length_y :
+     image_size_y :
          y size, height
      pad_mode :
          cv2 padding style: repeat, reflect, etc.
@@ -858,19 +858,19 @@ def imageage_gen(
         tfms = []
     elif not isinstance(tfms, collections.Iterable):
         tfms = [tfms]
-    if image_side_length_y is None:
-        image_side_length_y = image_side_length
+    if image_size_y is None:
+        image_size_y = image_size
     scale = [
-        RandomScale(image_side_length, max_zoom, tfm_y=tfm_y, image_side_length_y=image_side_length_y)
+        RandomScale(image_size, max_zoom, tfm_y=tfm_y, image_size_y=image_size_y)
         if max_zoom is not None
-        else Scale(image_side_length, tfm_y, image_side_length_y=image_side_length_y)
+        else Scale(image_size, tfm_y, image_size_y=image_size_y)
     ]
     if pad:
         scale.append(AddPadding(pad, mode=pad_mode))
     if crop_type != CropType.GOOGLENET:
         tfms = scale + tfms
     return Transforms(
-        image_side_length, tfms, normalizer, denorm, crop_type, tfm_y=tfm_y, image_side_length_y=image_side_length_y
+        image_size, tfms, normalizer, denorm, crop_type, tfm_y=tfm_y, image_size_y=image_size_y
     )
 
 
@@ -892,13 +892,13 @@ inception_models = (inception_4, inceptionresnet_2)
 
 def tfms_from_stats(
     stats,
-    image_side_length,
+    image_size,
     aug_tfms=None,
     max_zoom=None,
     pad=0,
     crop_type=CropType.RANDOM,
     tfm_y=None,
-    image_side_length_y=None,
+    image_size_y=None,
     pad_mode=cv2.BORDER_REFLECT,
     norm_y=True,
 ):
@@ -914,20 +914,20 @@ def tfms_from_stats(
     val_tfm = imageage_gen(
         tfm_norm,
         tfm_denorm,
-        image_side_length,
+        image_size,
         pad=pad,
         crop_type=val_crop,
         tfm_y=tfm_y,
-        image_side_length_y=image_side_length_y,
+        image_size_y=image_size_y,
     )
     trn_tfm = imageage_gen(
         tfm_norm,
         tfm_denorm,
-        image_side_length,
+        image_size,
         pad=pad,
         crop_type=crop_type,
         tfm_y=tfm_y,
-        image_side_length_y=image_side_length_y,
+        image_size_y=image_size_y,
         tfms=aug_tfms,
         max_zoom=max_zoom,
         pad_mode=pad_mode,
@@ -937,13 +937,13 @@ def tfms_from_stats(
 
 def tfms_from_model(
     f_model,
-    image_side_length,
+    image_size,
     aug_tfms=None,
     max_zoom=None,
     pad=0,
     crop_type=CropType.RANDOM,
     tfm_y=None,
-    image_side_length_y=None,
+    image_size_y=None,
     pad_mode=cv2.BORDER_REFLECT,
     norm_y=True,
 ):
@@ -956,13 +956,13 @@ def tfms_from_model(
     stats = inception_stats if f_model in inception_models else imageagenet_stats
     return tfms_from_stats(
         stats,
-        image_side_length,
+        image_size,
         aug_tfms,
         max_zoom=max_zoom,
         pad=pad,
         crop_type=crop_type,
         tfm_y=tfm_y,
-        image_side_length_y=image_side_length_y,
+        image_size_y=image_size_y,
         pad_mode=pad_mode,
         norm_y=norm_y,
     )
