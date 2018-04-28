@@ -445,7 +445,7 @@ class Learner():
         """
         self.save("tmp")
         layer_opt = self.get_layer_opt(start_lr, wds)
-        self.sched = find_learning_rateer(
+        self.sched = LearningRateFinder(
             layer_opt, len(self.data.training_downloader), end_lr, linear=linear
         )
         self.fit_gen(self.model, self.data, layer_opt, 1, **kwargs)

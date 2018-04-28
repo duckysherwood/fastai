@@ -1,6 +1,6 @@
-from .imageports imageport *
-from .layer_optimageizer imageport *
-from enum imageport IntEnum
+from .imports import *
+from .layer_optimizer import *
+from enum import IntEnum
 
 
 def scale_min(image, targ, interpolation=cv2.INTER_AREA):
