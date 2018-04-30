@@ -23,14 +23,14 @@ def train_image_size(image_size, load=None, save_name=None, suf=None):
     if load:
         learn.load(f"{load}_{cv_idx}{suf}")
     print("--- FC")
-    learn.fit(0.3, 2, cycle_len=1)
+    learn.fit(0.3, 2, cycle_length=1)
     print("--- Gradual")
     for i in range(6, 3, -1):
         learn.freeze_to(i)
-        learn.fit(0.1 * (i - 3), 1, cycle_len=1)
+        learn.fit(0.1 * (i - 3), 1, cycle_length=1)
     learn.unfreeze()
     print("--- All")
-    learn.fit(0.2, 15, cycle_len=3, cycle_save_name=f"{save_name}{suf}")
+    learn.fit(0.2, 15, cycle_length=3, cycle_save_name=f"{save_name}{suf}")
     learn.save(f"{image_size}_{cv_idx}{suf}")
 
 

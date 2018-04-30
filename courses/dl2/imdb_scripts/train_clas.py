@@ -20,11 +20,11 @@ def train_clas(
     backwards=False,
     startat=0,
     unfreeze=True,
-    lr=0.01,
+    learning_rate=0.01,
     dropmult=1.0,
     pretrain=True,
     bpe=False,
-    use_clr=True,
+    use_cyclical_learning_rate=True,
     use_regular_schedule=False,
     use_discriminative=True,
     last=False,
@@ -36,7 +36,7 @@ def train_clas(
         clas_id = lm_id
     print(
         f"prefix {prefix}; cuda_id {cuda_id}; lm_id {lm_id}; clas_id {clas_id}; batch_size {batch_size}; cl {cl}; backwards {backwards}; "
-        f"dropmult {dropmult} unfreeze {unfreeze} startat {startat}; pretrain {pretrain}; bpe {bpe}; use_clr {use_clr};"
+        f"dropmult {dropmult} unfreeze {unfreeze} startat {startat}; pretrain {pretrain}; bpe {bpe}; use_cyclical_learning_rate {use_cyclical_learning_rate};"
         f"use_regular_schedule {use_regular_schedule}; use_discriminative {use_discriminative}; last {last};"
         f"chain_thaw {chain_thaw}; from_scratch {from_scratch}; train_file_id {train_file_id}"
     )
@@ -109,8 +109,8 @@ def train_clas(
         c,
         vs,
         embedding_size=embedding_size,
-        n_hid=nh,
-        n_layers=nl,
+        hidden_layer_count=nh,
+        layer_count=nl,
         pad_token=1,
         layers=[embedding_size * 3, 50, c],
         drops=[dps[4], 0.1],
@@ -125,13 +125,13 @@ def train_clas(
     learn.clip = 25.
     learn.metrics = [accuracy]
 
-    lrm = 2.6
+    learning_ratem = 2.6
     if use_discriminative:
-        lrs = np.array(
-            [lr / (lrm ** 4), lr / (lrm ** 3), lr / (lrm ** 2), lr / lrm, lr]
+        learning_rates = np.array(
+            [learning_rate / (learning_ratem ** 4), learning_rate / (learning_ratem ** 3), learning_rate / (learning_ratem ** 2), learning_rate / learning_ratem, learning_rate]
         )
     else:
-        lrs = lr
+        learning_rates = learning_rate
     wd = 1e-6
     if not from_scratch:
         learn.load_encoder(lm_path)
@@ -148,51 +148,51 @@ def train_clas(
     ):
         learn.freeze_to(-1)
         learn.fit(
-            lrs,
+            learning_rates,
             1,
             wds=wd,
-            cycle_len=None if use_regular_schedule else 1,
-            use_clr=None if use_regular_schedule or not use_clr else (8, 3),
+            cycle_length=None if use_regular_schedule else 1,
+            use_cyclical_learning_rate=None if use_regular_schedule or not use_cyclical_learning_rate else (8, 3),
         )
         learn.freeze_to(-2)
         learn.fit(
-            lrs,
+            learning_rates,
             1,
             wds=wd,
-            cycle_len=None if use_regular_schedule else 1,
-            use_clr=None if use_regular_schedule or not use_clr else (8, 3),
+            cycle_length=None if use_regular_schedule else 1,
+            use_cyclical_learning_rate=None if use_regular_schedule or not use_cyclical_learning_rate else (8, 3),
         )
         learn.save(f"{PRE}{clas_id}clas_0")
     elif startat == 1:
         learn.load(f"{PRE}{clas_id}clas_0")
 
     if chain_thaw:
-        lrs = np.array([0.0001, 0.0001, 0.0001, 0.0001, 0.001])
+        learning_rates = np.array([0.0001, 0.0001, 0.0001, 0.0001, 0.001])
         print("Using chain-thaw. Unfreezing all layers one at a time...")
-        n_layers = len(learn.get_layer_groups())
-        print("# of layers:", n_layers)
+        layer_count = len(learn.get_layer_groups())
+        print("# of layers:", layer_count)
         # fine-tune last layer
         learn.freeze_to(-1)
         print("Fine-tuning last layer...")
         learn.fit(
-            lrs,
+            learning_rates,
             1,
             wds=wd,
-            cycle_len=None if use_regular_schedule else 1,
-            use_clr=None if use_regular_schedule or not use_clr else (8, 3),
+            cycle_length=None if use_regular_schedule else 1,
+            use_cyclical_learning_rate=None if use_regular_schedule or not use_cyclical_learning_rate else (8, 3),
         )
         n = 0
         # fine-tune all layers up to the second-last one
-        while n < n_layers - 1:
+        while n < layer_count - 1:
             print("Fine-tuning layer #%d." % n)
             freeze_all_but(learn, n)
             learn.fit(
-                lrs,
+                learning_rates,
                 1,
                 wds=wd,
-                cycle_len=None if use_regular_schedule else 1,
-                use_clr=None
-                if use_regular_schedule or not use_clr
+                cycle_length=None if use_regular_schedule else 1,
+                use_cyclical_learning_rate=None
+                if use_regular_schedule or not use_cyclical_learning_rate
                 else (8, 3),
             )
             n += 1
@@ -208,21 +208,21 @@ def train_clas(
 
     if use_regular_schedule:
         print(
-            "Using regular schedule. Setting use_clr=None, n_cycles=cl, cycle_len=None."
+            "Using regular schedule. Setting use_cyclical_learning_rate=None, cycle_count=cl, cycle_length=None."
         )
-        use_clr = None
-        n_cycles = cl
+        use_cyclical_learning_rate = None
+        cycle_count = cl
         cl = None
     else:
-        n_cycles = 1
+        cycle_count = 1
     learn.fit(
-        lrs,
-        n_cycles,
+        learning_rates,
+        cycle_count,
         wds=wd,
-        cycle_len=cl,
-        use_clr=(8, 8) if use_clr else None,
+        cycle_length=cl,
+        use_cyclical_learning_rate=(8, 8) if use_cyclical_learning_rate else None,
     )
-    print("Plotting lrs...")
+    print("Plotting learning_rates...")
     learn.sched.plot_learning_rate()
     learn.save(f"{PRE}{clas_id}clas_1")
 

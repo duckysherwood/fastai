@@ -168,13 +168,13 @@ class Learner():
         model,
         data,
         layer_opt,
-        n_cycle,
-        cycle_len=None,
-        cycle_mult=1,
+        cycle_count,
+        cycle_length=None,
+        cycle_multiplier=1,
         cycle_save_name=None,
         best_save_name=None,
-        use_clr=None,
-        use_clr_beta=None,
+        use_cyclic_learning_rate=None,
+        use_cyclic_learning_rate_beta=None,
         metrics=None,
         callbacks=None,
         use_wd_sched=False,
@@ -187,11 +187,11 @@ class Learner():
     ):
 
         """Method does some preparation before finally delegating to the 'fit' method for
-        fitting the model. Namely, if cycle_len is defined, it adds a 'Cosine Annealing'
+        fitting the model. Namely, if cycle_length is defined, it adds a 'Cosine Annealing'
         scheduler for varying the learning rate across iterations.
 
-        Method also computes the total number of epochs to fit based on provided 'cycle_len',
-        'cycle_mult', and 'n_cycle' parameters.
+        Method also computes the total number of epochs to fit based on provided 'cycle_length',
+        'cycle_multiplier', and 'cycle_count' parameters.
 
         Args:
             model (Learner):  Any neural architecture for solving a supported problem.
@@ -201,17 +201,31 @@ class Learner():
 
             layer_opt (LayerOptimizer): An instance of the LayerOptimizer class
 
-            n_cycle (int): number of cycles
+            cycle_count (int): number of cycles
 
-            cycle_len (int):  number of cycles before lr is reset to the initial value.
-                E.g if cycle_len = 3, then the lr is varied between a maximum
-                and minimum value over 3 epochs.
+            cycle_length (int):  number of epochs before the learning rateis reset to the initial value.
+                E.g if cycle_length = 3, then the learning rate is varied between a maximum
+                and minimum value over 3 epochs.  See also cycle_multiplieriplier below.
 
-            cycle_mult (int): additional parameter for influencing how the lr resets over
-                the cycles. For an intuitive explanation, please see
+            cycle_multiplier (int): an additional multiplier which varies the number of epochs per 
+                cycle.  The number of epochs will vary linearaly from 1*cycle_length to 
+                cycle_multiplier*cycle_length.   There will still be cycle_count cycles.
+                For an intuitive explanation, please see
                 https://github.com/fastai/fastai/blob/master/courses/dl1/lesson1.ipynb
 
             cycle_save_name (str): use to save the weights at end of each cycle
+
+            use_cyclical_learning_rate (tuple): Pass a tuple with two numbers to use the cyclical
+                learning rate discussed in https://arxiv.org/abs/1803.09820v2.  
+                The first number is the ratio between the initial learning rate and the maximum one; 
+                the second number is the percentage of the cycle you want to spend on the 
+                shallower learning rate decay.
+
+            use_cyclical_learning_rate_beta(tuple): Pass a tuple with four numbers to use a variant
+                of use_cyclical_learning_rate() which includes cyclical momentum changes.  
+                The first two numbers are the same as in use_cyclical_learning_rate().  
+                The third number is the maximum value of momentum to use;
+                the fourth number is the minimum value of momentum.
 
             best_save_name (str): use to save weights of best model during training.
 
@@ -266,50 +280,50 @@ class Learner():
                     "pass weight decay values."
                 )
             batch_per_epoch = len(data.training_downloader)
-            cl = cycle_len if cycle_len else 1
+            cl = cycle_length if cycle_length else 1
             self.wd_sched = WeightDecaySchedule(
                 layer_opt,
                 batch_per_epoch,
                 cl,
-                cycle_mult,
-                n_cycle,
+                cycle_multiplier,
+                cycle_count,
                 norm_wds,
                 wds_sched_mult,
             )
             callbacks += [self.wd_sched]
 
-        if use_clr is not None:
-            clr_div, cut_div = use_clr[:2]
-            moms = use_clr[2:] if len(use_clr) > 2 else None
+        if use_cyclic_learning_rate is not None:
+            clr_div, cut_div = use_cyclic_learning_rate[:2]
+            moms = use_cyclic_learning_rate[2:] if len(use_cyclic_learning_rate) > 2 else None
             cycle_end = self.get_cycle_end(cycle_save_name)
             self.sched = CircularLR(
                 layer_opt,
-                len(data.training_downloader) * cycle_len,
-                on_cycle_end=cycle_end,
+                len(data.training_downloader) * cycle_length,
+                ocycle_count_end=cycle_end,
                 div=clr_div,
                 cut_div=cut_div,
                 momentums=moms,
             )
-        elif use_clr_beta is not None:
-            div, pct = use_clr_beta[:2]
-            moms = use_clr_beta[2:] if len(use_clr_beta) > 3 else None
+        elif use_cyclic_learning_rate_beta is not None:
+            div, pct = use_cyclic_learning_rate_beta[:2]
+            moms = use_cyclic_learning_rate_beta[2:] if len(use_cyclic_learning_rate_beta) > 3 else None
             cycle_end = self.get_cycle_end(cycle_save_name)
             self.sched = CircularLR_beta(
                 layer_opt,
-                len(data.training_downloader) * cycle_len,
-                on_cycle_end=cycle_end,
+                len(data.training_downloader) * cycle_length,
+                ocycle_count_end=cycle_end,
                 div=div,
                 pct=pct,
                 momentums=moms,
             )
-        elif cycle_len:
+        elif cycle_length:
             cycle_end = self.get_cycle_end(cycle_save_name)
-            cycle_batches = len(data.training_downloader) * cycle_len
+            cycle_batches = len(data.training_downloader) * cycle_length
             self.sched = CosAnneal(
                 layer_opt,
                 cycle_batches,
-                on_cycle_end=cycle_end,
-                cycle_mult=cycle_mult,
+                ocycle_count_end=cycle_end,
+                cycle_multiplier=cycle_multiplier,
             )
         elif not self.sched:
             self.sched = LossRecorder(layer_opt)
@@ -326,7 +340,7 @@ class Learner():
             callbacks += [SWA(model, self.swa_model, swa_start)]
 
         n_epoch = int(
-            sum_geom(cycle_len if cycle_len else 1, cycle_mult, n_cycle)
+            sum_geom(cycle_length if cycle_length else 1, cycle_multiplier, cycle_count)
         )
         return fit(
             model,
@@ -370,7 +384,7 @@ class Learner():
         """
         return LayerOptimizer(self.opt_fn, self.get_layer_groups(), lrs, wds)
 
-    def fit(self, lrs, n_cycle, wds=None, **kwargs):
+    def fit(self, lrs, cycle_count, wds=None, **kwargs):
 
         """Method gets an instance of LayerOptimizer and delegates to self.fit_gen(..)
 
@@ -386,7 +400,7 @@ class Learner():
         Args:
             lrs (float or list(float)): learning rate for the model
 
-            n_cycle (int): number of cycles (or iterations) to fit the model for
+            cycle_count (int): number of cycles (or iterations) to fit the model for
 
             wds (float or list(float)): weight decay parameter(s).
 
@@ -398,7 +412,7 @@ class Learner():
         self.sched = None
         layer_opt = self.get_layer_opt(lrs, wds)
         return self.fit_gen(
-            self.model, self.data, layer_opt, n_cycle, **kwargs
+            self.model, self.data, layer_opt, cycle_count, **kwargs
         )
 
     def warm_up(self, lr, wds=None):

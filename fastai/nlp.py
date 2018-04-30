@@ -280,7 +280,7 @@ class LanguageModelData():
             >> learner.reg_fn = seq2seq_reg
             >> learner.clip=0.3
 
-            >> learner.fit(3e-3, 4, wds=1e-6, cycle_len=1, cycle_mult=2)
+            >> learner.fit(3e-3, 4, wds=1e-6, cycle_length=1, cycle_mult=2)
 
     """
 

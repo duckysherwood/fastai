@@ -785,7 +785,7 @@ class Transforms():
     def __init__(
         self,
         image_size,
-        tfms,
+        transformations,
         normalizer,
         denorm,
         crop_type=CropType.CENTER,
@@ -796,20 +796,20 @@ class Transforms():
             image_size_y = image_size
         self.image_size, self.denorm, self.norm, self.image_size_y = image_size, denorm, normalizer, image_size_y
         crop_tfm = crop_fn_lu[crop_type](image_size, tfm_y, image_size_y)
-        self.tfms = tfms + [crop_tfm, normalizer, ChannelOrder(tfm_y)]
+        self.transformations = transformations + [crop_tfm, normalizer, ChannelOrder(tfm_y)]
 
     def __call__(self, image, y=None):
-        return compose(image, y, self.tfms)
+        return compose(image, y, self.transformations)
 
     def __repr__(self):
-        return str(self.tfms)
+        return str(self.transformations)
 
 
 def imageage_gen(
     normalizer,
     denorm,
     image_size,
-    tfms=None,
+    transformations=None,
     max_zoom=None,
     pad=0,
     crop_type=None,
@@ -828,7 +828,7 @@ def imageage_gen(
          imageage denormalizing function
      image_size :
          size, image_size_y = image_size if not specified.
-     tfms :
+     transformations :
          iterable collection of transformation functions
      max_zoom : float,
          maximageum zoom
@@ -854,10 +854,10 @@ def imageage_gen(
     """
     if tfm_y is None:
         tfm_y = TfmType.NO
-    if tfms is None:
-        tfms = []
-    elif not isinstance(tfms, collections.Iterable):
-        tfms = [tfms]
+    if transformations is None:
+        transformations = []
+    elif not isinstance(transformations, collections.Iterable):
+        transformations = [transformations]
     if image_size_y is None:
         image_size_y = image_size
     scale = [
@@ -868,9 +868,9 @@ def imageage_gen(
     if pad:
         scale.append(AddPadding(pad, mode=pad_mode))
     if crop_type != CropType.GOOGLENET:
-        tfms = scale + tfms
+        transformations = scale + transformations
     return Transforms(
-        image_size, tfms, normalizer, denorm, crop_type, tfm_y=tfm_y, image_size_y=image_size_y
+        image_size, transformations, normalizer, denorm, crop_type, tfm_y=tfm_y, image_size_y=image_size_y
     )
 
 
@@ -890,10 +890,10 @@ inception_stats = A([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
 inception_models = (inception_4, inceptionresnet_2)
 
 
-def tfms_from_stats(
+def transformations_from_stats(
     stats,
     image_size,
-    aug_tfms=None,
+    aug_transformations=None,
     max_zoom=None,
     pad=0,
     crop_type=CropType.RANDOM,
@@ -904,8 +904,8 @@ def tfms_from_stats(
 ):
     """ Given the statistics of the training imageage sets, returns separate training and validation transform functions
     """
-    if aug_tfms is None:
-        aug_tfms = []
+    if aug_transformations is None:
+        aug_transformations = []
     tfm_norm = Normalize(*stats, tfm_y=tfm_y if norm_y else TfmType.NO)
     tfm_denorm = Denormalize(*stats)
     val_crop = CropType.CENTER if crop_type in (
@@ -928,17 +928,17 @@ def tfms_from_stats(
         crop_type=crop_type,
         tfm_y=tfm_y,
         image_size_y=image_size_y,
-        tfms=aug_tfms,
+        transformations=aug_transformations,
         max_zoom=max_zoom,
         pad_mode=pad_mode,
     )
     return trn_tfm, val_tfm
 
 
-def tfms_from_model(
+def transformations_from_model(
     f_model,
     image_size,
-    aug_tfms=None,
+    aug_transformations=None,
     max_zoom=None,
     pad=0,
     crop_type=CropType.RANDOM,
@@ -948,16 +948,16 @@ def tfms_from_model(
     norm_y=True,
 ):
     """ Returns separate transformers of imageages for training and validation.
-    Transformers are constructed according to the imageage statistics given b y the model. (See tfms_from_stats)
+    Transformers are constructed according to the imageage statistics given b y the model. (See transformations_from_stats)
 
     Arguments:
         f_model: model, pretrained or not pretrained
     """
     stats = inception_stats if f_model in inception_models else imageagenet_stats
-    return tfms_from_stats(
+    return transformations_from_stats(
         stats,
         image_size,
-        aug_tfms,
+        aug_transformations,
         max_zoom=max_zoom,
         pad=pad,
         crop_type=crop_type,

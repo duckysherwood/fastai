@@ -14,14 +14,14 @@ def train_lm(
     cl=1,
     batch_size=64,
     backwards=False,
-    lr=3e-4,
+    learning_rate=3e-4,
     startat=0,
     sampled=True,
     preload=True,
 ):
     print(
         f"prefix {prefix}; cuda_id {cuda_id}; cl {cl}; batch_size {batch_size}; backwards {backwards} sampled {sampled} "
-        f"lr {lr} startat {startat}"
+        f"learning_rate {learning_rate} startat {startat}"
     )
     torch.cuda.set_device(cuda_id)
     PRE = "bwd_" if backwards else "fwd_"
@@ -84,11 +84,11 @@ def train_lm(
         learner.load(f"{PRE}lm_4")
     learner.metrics = [accuracy]
 
-    lrs = np.array([lr / 6, lr / 3, lr, lr])
-    # lrs=lr
+    learning_rates = np.array([learning_rate / 6, learning_rate / 3, learning_rate, learning_rate])
+    # learning_rates=learning_rate
 
     learner.unfreeze()
-    learner.fit(lrs, 1, wds=wd, use_clr=(32, 10), cycle_len=cl)
+    learner.fit(learning_rates, 1, wds=wd, use_cyclical_learning_rate=(32, 10), cycle_length=cl)
     learner.save(f"{PRE}lm_4")
     learner.save_encoder(f"{PRE}lm_4_enc")
 

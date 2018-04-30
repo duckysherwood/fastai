@@ -381,7 +381,7 @@ class SaveBestModel(LossRecorder):
         
         Usage:
             Briefly, you have your model 'learn' variable and call fit.
-            >>> learn.fit(lr, 2, cycle_len=2, cycle_mult=1, best_save_name='mybestmodel')
+            >>> learn.fit(lr, 2, cycle_length=2, cycle_mult=1, best_save_name='mybestmodel')
             ....
             >>> learn.load('mybestmodel')
             
@@ -426,7 +426,7 @@ class WeightDecaySchedule(Callback):
         batch_per_epoch,
         cycle_len,
         cycle_mult,
-        n_cycles,
+        cycle_count,
         norm_wds=False,
         wds_sched_mult=None,
     ):
@@ -437,7 +437,7 @@ class WeightDecaySchedule(Callback):
         :param batch_per_epoch: Num batches in 1 epoch
         :param cycle_len: Num epochs in initial cycle. Subsequent cycle_len = previous cycle_len * cycle_mult
         :param cycle_mult: Cycle multiplier
-        :param n_cycles: Number of cycles to be executed
+        :param cycle_count: Number of cycles to be executed
         """
         super().__init__()
 
@@ -457,7 +457,7 @@ class WeightDecaySchedule(Callback):
 
         # Pre calculating the number of epochs in the cycle of current running epoch
         self.epoch_to_num_cycles, i = dict(), 0
-        for cycle in range(n_cycles):
+        for cycle in range(cycle_count):
             for _ in range(cycle_len):
                 self.epoch_to_num_cycles[i] = cycle_len
                 i += 1

@@ -8,62 +8,63 @@ from .layer_optimizer import *
 from .dataloader import DataLoader
 
 
-def get_cv_idxs(n, cv_idx=0, val_pct=0.2, seed=42):
+def get_idxs_for_validation_split(original_element_count, cv_idx=0, percent_to_use_for_validation=0.2, seed=42):
     """ Get a list of index values for Validation set from a dataset
+        (used to split a training set into training and validation sets).
     
     Arguments:
-        n : int, Total number of elements in the data set.
-        cv_idx : int, starting index [idx_start = cv_idx*int(val_pct*n)] 
-        val_pct : (int, float), validation set percentage 
+        original_element_count : int, Total number of elements in the data set.
+        cv_idx : int, starting index [idx_start = cv_idx*int(percent_to_use_for_validation*original_element_count)] 
+        percent_to_use_for_validation : (int, float), validation set percentage 
         seed : seed value for RandomState
         
     Returns:
         list of indexes 
     """
     np.random.seed(seed)
-    n_val = int(val_pct * n)
-    idx_start = cv_idx * n_val
-    idxs = np.random.permutation(n)
-    return idxs[idx_start:idx_start + n_val]
+    validation_count = int(percent_to_use_for_validation * original_element_count)
+    idx_start = cv_idx * validation_count
+    idxs = np.random.permutation(original_element_count)
+    return idxs[idx_start:idx_start + validation_count]
 
 
-def resize_img(fname, targ, path, new_path):
+def resize_image(image_filename, target_image_size, path, new_path):
     """
-    Enlarge or shrink a single image to scale, such that the smaller of the height or width dimension is equal to targ.
+    Enlarge or shrink a single image to scale, such that the smaller of the height or width dimension is equal to target_image_size.
     """
-    dest = os.path.join(path, new_path, str(targ), fname)
+    dest = os.path.join(path, new_path, str(target_image_size), image_filename)
     if os.path.exists(dest):
         return
-    im = Image.open(os.path.join(path, fname)).convert("RGB")
-    r, c = im.size
-    ratio = targ / min(r, c)
-    image_size = (scale_to(r, ratio, targ), scale_to(c, ratio, targ))
+    im = Image.open(os.path.join(path, image_filename)).convert("RGB")
+    image_rows, image_columns = im.size
+    ratio = target_image_size / min(image_rows, image_columns)
+    image_size = (scale_to(image_rows, ratio, target_image_size), scale_to(image_columns, ratio, target_image_size))
     os.makedirs(os.path.split(dest)[0], exist_ok=True)
-    im.resize(image_size, Image.LINEAR).save(dest)
+    im.resize(image_size, Image.LInEAR).save(dest)
 
 
-def resize_imgs(fnames, targ, path, new_path):
+def resize_images(image_filenames, target_image_size, path, new_path):
     """
-    Enlarge or shrink a set of images in the same directory to scale, such that the smaller of the height or width dimension is equal to targ.
-    Note: 
+    Enlarge or shrink a set of images in the same directory to scale, such that the smaller of the height or width dimension is equal to target_image_size.
+    note: 
     -- This function is multithreaded for efficiency. 
     -- When destination file or folder already exist, function exists without raising an error. 
     """
-    if not os.path.exists(os.path.join(path, new_path, str(targ), fnames[0])):
+    if not os.path.exists(os.path.join(path, new_path, str(target_image_size), image_filenames[0])):
         with ThreadPoolExecutor(8) as e:
-            ims = e.map(lambda x: resize_img(x, targ, path, new_path), fnames)
-            for x in tqdm(ims, total=len(fnames), leave=False):
+            images = e.map(lambda x: resize_image(x, target_image_size, path, new_path), image_filenames)
+            for x in tqdm(images, total=len(image_filenames), leave=False):
                 pass
-    return os.path.join(path, new_path, str(targ))
+    return os.path.join(path, new_path, str(target_image_size))
 
 
 def read_dir(path, folder):
     full_path = os.path.join(path, folder)
-    fnames = glob(f"{full_path}/*.*")
-    if any(fnames):
-        return [os.path.relpath(f, path) for f in fnames]
+    image_filenames = glob(f"{full_path}/*.*")
+    if any(image_filenames):
+        return [os.path.relpath(f, path) for f in image_filenames]
     else:
-        raise FileNotFoundError(
+        raise FilenotFoundError(
             "{} folder doesn't exist or is empty".format(folder)
         )
 
@@ -77,39 +78,39 @@ def read_dirs(path, folder):
     for label in sorted(os.listdir(full_path)):
         if label not in (".ipynb_checkpoints", ".DS_Store"):
             all_labels.append(label)
-            for fname in os.listdir(os.path.join(full_path, label)):
-                filenames.append(os.path.join(folder, label, fname))
+            for image_filename in os.listdir(os.path.join(full_path, label)):
+                filenames.append(os.path.join(folder, label, image_filename))
                 labels.append(label)
     return filenames, labels, all_labels
 
 
-def n_hot(ids, c):
+def one_hot_encode(ids, element_count):
     """
     one hot encoding by index. Returns array of length c, where all entries are 0, except for the indecies in ids
     """
-    res = np.zeros((c,), dtype=np.float32)
-    res[ids] = 1
-    return res
+    encoding_array = np.zeros((element_count,), dtype=np.float32)
+    encoding_array[ids] = 1
+    return encoding_array
 
 
 def folder_source(path, folder):
-    fnames, lbls, all_labels = read_dirs(path, folder)
+    image_filenames, labels, all_labels = read_dirs(path, folder)
     label2idx = {v: k for k, v in enumerate(all_labels)}
-    idxs = [label2idx[lbl] for lbl in lbls]
-    c = len(all_labels)
+    idxs = [label2idx[lbl] for lbl in labels]
+    # c = len(all_labels) # @@@ appears unused
     label_arr = np.array(idxs, dtype=int)
-    return fnames, label_arr, all_labels
+    return image_filenames, label_arr, all_labels
 
 
-def parse_csv_labels(fn, skip_header=True, cat_separator=" "):
+def parse_csv_labels(filepath, skip_header=True, category_separator=" "):
     """Parse filenames and label sets from a CSV file.
 
-    This method expects that the csv file at path :fn: has two columns. If it
+    This method expects that the csv file at path :filepath: has two columns. If it
     has a header, :skip_header: should be set to True. The labels in the
     label set are expected to be space separated.
 
     Arguments:
-        fn: Path to a CSV file.
+        filepath: Path to a CSV file.
         skip_header: A boolean flag indicating whether to skip the header.
 
     Returns:
@@ -121,41 +122,41 @@ def parse_csv_labels(fn, skip_header=True, cat_separator=" "):
             be one-hot encoded.
         )
     .
-    :param cat_separator: the separator for the categories column
+    :param category_separator: the separator for the categories column
     """
     df = pd.read_csv(
-        fn, index_col=0, header=0 if skip_header else None, dtype=str
+        filepath, index_col=0, header=0 if skip_header else None, dtype=str
     )
-    fnames = df.index.values
-    df.iloc[:, 0] = df.iloc[:, 0].str.split(cat_separator)
-    return sorted(fnames), list(df.to_dict().values())[0]
+    image_filenames = df.index.values
+    df.iloc[:, 0] = df.iloc[:, 0].str.split(category_separator)
+    return sorted(image_filenames), list(df.to_dict().values())[0]
 
 
-def nhot_labels(label2idx, csv_labels, fnames, c):
+def nhot_labels(label2idx, csv_labels, image_filenames, c):
 
     all_idx = {
-        k: n_hot([label2idx[o] for o in v], c) for k, v in csv_labels.items()
+        k: one_hot_encode([label2idx[o] for o in v], c) for k, v in csv_labels.items()
     }
-    return np.stack([all_idx[o] for o in fnames])
+    return np.stack([all_idx[o] for o in image_filenames])
 
 
 def csv_source(
     folder, csv_file, skip_header=True, suffix="", continuous=False
 ):
-    fnames, csv_labels = parse_csv_labels(csv_file, skip_header)
-    return dict_source(folder, fnames, csv_labels, suffix, continuous)
+    image_filenames, csv_labels = parse_csv_labels(csv_file, skip_header)
+    return dict_source(folder, image_filenames, csv_labels, suffix, continuous)
 
 
-def dict_source(folder, fnames, csv_labels, suffix="", continuous=False):
+def dict_source(folder, image_filenames, csv_labels, suffix="", continuous=False):
     all_labels = sorted(list(set(p for o in csv_labels.values() for p in o)))
-    full_names = [os.path.join(folder, str(fn) + suffix) for fn in fnames]
+    full_names = [os.path.join(folder, str(filepath) + suffix) for filepath in image_filenames]
     if continuous:
         label_arr = np.array(
-            [np.array(csv_labels[i]).astype(np.float32) for i in fnames]
+            [np.array(csv_labels[i]).astype(np.float32) for i in image_filenames]
         )
     else:
         label2idx = {v: k for k, v in enumerate(all_labels)}
-        label_arr = nhot_labels(label2idx, csv_labels, fnames, len(all_labels))
+        label_arr = nhot_labels(label2idx, csv_labels, image_filenames, len(all_labels))
         is_single = np.all(label_arr.sum(axis=1) == 1)
         if is_single:
             label_arr = np.argmax(label_arr, axis=1)
@@ -167,7 +168,7 @@ class BaseDataset(Dataset):
 
     def __init__(self, transform=None):
         self.transform = transform
-        self.n = self.get_n()
+        self.original_element_count = self.get_n()
         self.c = self.get_c()
         self.image_size = self.get_image_size()
 
@@ -178,13 +179,13 @@ class BaseDataset(Dataset):
     def __getitem__(self, idx):
         if isinstance(idx, slice):
             xs, ys = zip(
-                *[self.get1item(i) for i in range(*idx.indices(self.n))]
+                *[self.get1item(i) for i in range(*idx.indices(self.original_element_count))]
             )
             return np.stack(xs), ys
         return self.get1item(idx)
 
     def __len__(self):
-        return self.n
+        return self.original_element_count
 
     def get(self, tfm, x, y):
         return (x, y) if tfm is None else tfm(x, y)
@@ -192,27 +193,27 @@ class BaseDataset(Dataset):
     @abstractmethod
     def get_n(self):
         """Return number of elements in the dataset == len(self)."""
-        raise NotImplementedError
+        raise notImplementedError
 
     @abstractmethod
     def get_c(self):
         """Return number of classes in a dataset."""
-        raise NotImplementedError
+        raise notImplementedError
 
     @abstractmethod
     def get_image_size(self):
         """Return maximum size of an image in a dataset."""
-        raise NotImplementedError
+        raise notImplementedError
 
     @abstractmethod
     def get_x(self, i):
         """Return i-th example (image, wav, etc)."""
-        raise NotImplementedError
+        raise notImplementedError
 
     @abstractmethod
     def get_y(self, i):
         """Return i-th label."""
-        raise NotImplementedError
+        raise notImplementedError
 
     @property
     def is_multi(self):
@@ -225,57 +226,57 @@ class BaseDataset(Dataset):
         return False
 
 
-def open_image(fn):
+def open_image(filepath):
     """ Opens an image using OpenCV given the file path.
 
     Arguments:
-        fn: the file path of the image
+        filepath: the file path of the image
 
     Returns:
         The image in RGB format as numpy array of floats normalized to range between 0.0 - 1.0
     """
-    flags = cv2.IMREAD_UNCHANGED + cv2.IMREAD_ANYDEPTH + cv2.IMREAD_ANYCOLOR
-    if not os.path.exists(fn):
-        raise OSError("No such file or directory: {}".format(fn))
-    elif os.path.isdir(fn):
-        raise OSError("Is a directory: {}".format(fn))
+    flags = cv2.IMREAD_UnCHAnGED + cv2.IMREAD_AnYDEPTH + cv2.IMREAD_AnYCOLOR
+    if not os.path.exists(filepath):
+        raise OSError("no such file or directory: {}".format(filepath))
+    elif os.path.isdir(filepath):
+        raise OSError("Is a directory: {}".format(filepath))
     else:
-        # res = np.array(Image.open(fn), dtype=np.float32)/255
+        # res = np.array(Image.open(filepath), dtype=np.float32)/255
         # if len(res.shape)==2: res = np.repeat(res[...,None],3,2)
         # return res
         try:
-            im = cv2.imread(str(fn), flags).astype(np.float32) / 255
+            im = cv2.imread(str(filepath), flags).astype(np.float32) / 255
             if im is None:
-                raise OSError(f"File not recognized by opencv: {fn}")
+                raise OSError(f"File not recognized by opencv: {filepath}")
             return cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
         except Exception as e:
-            raise OSError("Error handling image at: {}".format(fn)) from e
+            raise OSError("Error handling image at: {}".format(filepath)) from e
 
 
 class FilesDataset(BaseDataset):
 
-    def __init__(self, fnames, transform, path):
-        self.path, self.fnames = path, fnames
+    def __init__(self, image_filenames, transform, path):
+        self.path, self.image_filenames = path, image_filenames
         super().__init__(transform)
 
     def get_image_size(self):
         return self.transform.image_size
 
     def get_x(self, i):
-        return open_image(os.path.join(self.path, self.fnames[i]))
+        return open_image(os.path.join(self.path, self.image_filenames[i]))
 
     def get_n(self):
-        return len(self.fnames)
+        return len(self.image_filenames)
 
-    def resize_imgs(self, targ, new_path):
-        dest = resize_imgs(self.fnames, targ, self.path, new_path)
-        return self.__class__(self.fnames, self.y, self.transform, dest)
+    def resize_images(self, target_image_size, new_path):
+        dest = resize_images(self.image_filenames, target_image_size, self.path, new_path)
+        return self.__class__(self.image_filenames, self.y, self.transform, dest)
 
     def denorm(self, arr):
         """Reverse the normalization done to a batch of images.
 
         Arguments:
-            arr: of shape/size (N,3,get_image_size,get_image_size)
+            arr: of shape/size (original_element_count,3,get_image_size,get_image_size)
         """
         if type(arr) is not np.ndarray:
             arr = to_np(arr)
@@ -286,10 +287,10 @@ class FilesDataset(BaseDataset):
 
 class FilesArrayDataset(FilesDataset):
 
-    def __init__(self, fnames, y, transform, path):
+    def __init__(self, image_filenames, y, transform, path):
         self.y = y
-        assert len(fnames) == len(y)
-        super().__init__(fnames, transform, path)
+        assert len(image_filenames) == len(y)
+        super().__init__(image_filenames, transform, path)
 
     def get_y(self, i):
         return self.y[i]
@@ -304,7 +305,7 @@ class FilesIndexArrayDataset(FilesArrayDataset):
         return int(self.y.max()) + 1
 
 
-class FilesNhotArrayDataset(FilesArrayDataset):
+class FilesnhotArrayDataset(FilesArrayDataset):
 
     @property
     def is_multi(self):
@@ -346,7 +347,7 @@ class ArraysIndexDataset(ArraysDataset):
         return self.y[i]
 
 
-class ArraysNhotDataset(ArraysDataset):
+class ArraysnhotDataset(ArraysDataset):
 
     def get_c(self):
         return self.y.shape[1]
@@ -432,10 +433,10 @@ class ImageData(ModelData):
     def c(self):
         return self.training_dataset.c
 
-    def resized(self, dl, targ, new_path):
-        return dl.dataset.resize_imgs(targ, new_path) if dl else None
+    def resized(self, dl, target_image_size, new_path):
+        return dl.dataset.resize_images(target_image_size, new_path) if dl else None
 
-    def resize(self, targ_image_size, new_path="tmp"):
+    def resize(self, target_image_size_image_size, new_path="tmp"):
         new_ds = []
         dls = [self.training_downloader, self.validation_downloader, self.fix_dl, self.aug_dl]
         if self.test_downloader:
@@ -444,29 +445,29 @@ class ImageData(ModelData):
             dls += [None, None]
         t = tqdm_notebook(dls)
         for dl in t:
-            new_ds.append(self.resized(dl, targ_image_size, new_path))
+            new_ds.append(self.resized(dl, target_image_size_image_size, new_path))
         t.close()
         return self.__class__(
             new_ds[0].path, new_ds, self.batch_size, self.num_workers, self.classes
         )
 
     @staticmethod
-    def get_ds(fn, trn, val, tfms, test=None, **kwargs):
+    def get_dataset(filepath, trn, val, transformations, test=None, **kwargs):
         res = [
-            fn(trn[0], trn[1], tfms[0], **kwargs),  # train
-            fn(val[0], val[1], tfms[1], **kwargs),  # val
-            fn(trn[0], trn[1], tfms[1], **kwargs),  # fix
-            fn(val[0], val[1], tfms[0], **kwargs),  # aug
+            filepath(trn[0], trn[1], transformations[0], **kwargs),  # train
+            filepath(val[0], val[1], transformations[1], **kwargs),  # val
+            filepath(trn[0], trn[1], transformations[1], **kwargs),  # fix
+            filepath(val[0], val[1], transformations[0], **kwargs),  # aug
         ]
         if test is not None:
             if isinstance(test, tuple):
-                test_lbls = test[1]
+                test_labels = test[1]
                 test = test[0]
             else:
-                test_lbls = np.zeros((len(test), 1))
+                test_labels = np.zeros((len(test), 1))
             res += [
-                fn(test, test_lbls, tfms[1], **kwargs),  # test
-                fn(test, test_lbls, tfms[0], **kwargs),  # test_aug
+                filepath(test, test_labels, transformations[1], **kwargs),  # test
+                filepath(test, test_labels, transformations[0], **kwargs),  # test_aug
             ]
         else:
             res += [None, None]
@@ -482,7 +483,7 @@ class ImageClassifierData(ImageData):
         trn,
         val,
         batch_size=64,
-        tfms=(None, None),
+        transformations=(None, None),
         classes=None,
         num_workers=4,
         test=None,
@@ -491,11 +492,11 @@ class ImageClassifierData(ImageData):
 
         Arguments:
             path: a root path of the data (used for storing trained models, precomputed values, etc)
-            trn: a tuple of training data matrix and target label/classification array (e.g. `trn=(x,y)` where `x` has the
+            trn: a tuple of training data matrix and target_image_sizeet label/classification array (e.g. `trn=(x,y)` where `x` has the
                 shape of `(5000, 784)` and `y` has the shape of `(5000,)`)
-            val: a tuple of validation data matrix and target label/classification array.
+            val: a tuple of validation data matrix and target_image_sizeet label/classification array.
             batch_size: batch size
-            tfms: transformations (for data augmentations). e.g. output of `tfms_from_model`
+            transformations: transformations (for data augmentations). e.g. output of `transformations_from_model`
             classes: a list of all labels/classifications
             num_workers: a number of workers
             test: a matrix of test data (the shape should match `trn[0]`)
@@ -503,7 +504,7 @@ class ImageClassifierData(ImageData):
         Returns:
             ImageClassifierData
         """
-        datasets = cls.get_ds(ArraysIndexDataset, trn, val, tfms, test=test)
+        datasets = cls.get_dataset(ArraysIndexDataset, trn, val, transformations, test=test)
         return cls(path, datasets, batch_size, num_workers, classes=classes)
 
     @classmethod
@@ -511,7 +512,7 @@ class ImageClassifierData(ImageData):
         cls,
         path,
         batch_size=64,
-        tfms=(None, None),
+        transformations=(None, None),
         trn_name="train",
         val_name="valid",
         test_name=None,
@@ -523,7 +524,7 @@ class ImageClassifierData(ImageData):
         Arguments:
             path: a root path of the data (used for storing trained models, precomputed values, etc)
             batch_size: batch size
-            tfms: transformations (for data augmentations). e.g. output of `tfms_from_model`
+            transformations: transformations (for data augmentations). e.g. output of `transformations_from_model`
             trn_name: a name of the folder that contains training images.
             val_name:  a name of the folder that contains validation images.
             test_name:  a name of the folder that contains test images.
@@ -533,7 +534,7 @@ class ImageClassifierData(ImageData):
             ImageClassifierData
         """
         assert not (
-            tfms[0] is None or tfms[1] is None
+            transformations[0] is None or transformations[1] is None
         ), "please provide transformations for your train and validation sets"
         trn, val = [folder_source(path, o) for o in (trn_name, val_name)]
         if test_name:
@@ -544,8 +545,8 @@ class ImageClassifierData(ImageData):
             )
         else:
             test = None
-        datasets = cls.get_ds(
-            FilesIndexArrayDataset, trn, val, tfms, path=path, test=test
+        datasets = cls.get_dataset(
+            FilesIndexArrayDataset, trn, val, transformations, path=path, test=test
         )
         return cls(path, datasets, batch_size, num_workers, classes=trn[2])
 
@@ -554,9 +555,9 @@ class ImageClassifierData(ImageData):
         cls,
         path,
         folder,
-        csv_fname,
+        csv_image_filename,
         batch_size=64,
-        tfms=(None, None),
+        transformations=(None, None),
         val_idxs=None,
         suffix="",
         test_name=None,
@@ -572,11 +573,11 @@ class ImageClassifierData(ImageData):
         Arguments:
             path: a root path of the data (used for storing trained models, precomputed values, etc)
             folder: a name of the folder in which training images are contained.
-            csv_fname: a name of the CSV file which contains target labels.
+            csv_image_filename: a name of the CSV file which contains target_image_sizeet labels.
             batch_size: batch size
-            tfms: transformations (for data augmentations). e.g. output of `tfms_from_model`
-            val_idxs: index of images to be used for validation. e.g. output of `get_cv_idxs`.
-                If None, default arguments to get_cv_idxs are used.
+            transformations: transformations (for data augmentations). e.g. output of `transformations_from_model`
+            val_idxs: index of images to be used for validation. e.g. output of `get_idxs_for_validation_split`.
+                If None, default arguments to get_idxs_for_validation_split are used.
             suffix: suffix to add to image names in CSV file (sometimes CSV only contains the file name without file
                     extension e.g. '.jpg' - in which case, you can set suffix as '.jpg')
             test_name: a name of the folder which contains test images.
@@ -587,19 +588,19 @@ class ImageClassifierData(ImageData):
         Returns:
             ImageClassifierData
         """
-        fnames, y, classes = csv_source(
-            folder, csv_fname, skip_header, suffix, continuous=continuous
+        image_filenames, y, classes = csv_source(
+            folder, csv_image_filename, skip_header, suffix, continuous=continuous
         )
         return cls.from_names_and_array(
             path,
-            fnames,
+            image_filenames,
             y,
             classes,
             val_idxs,
             test_name,
             num_workers=num_workers,
             suffix=suffix,
-            tfms=tfms,
+            transformations=transformations,
             batch_size=batch_size,
             continuous=continuous,
         )
@@ -608,36 +609,36 @@ class ImageClassifierData(ImageData):
     def from_names_and_array(
         cls,
         path,
-        fnames,
+        image_filenames,
         y,
         classes,
         val_idxs=None,
         test_name=None,
         num_workers=8,
         suffix="",
-        tfms=(None, None),
+        transformations=(None, None),
         batch_size=64,
         continuous=False,
     ):
-        val_idxs = get_cv_idxs(len(fnames)) if val_idxs is None else val_idxs
-        ((val_fnames, trn_fnames), (val_y, trn_y)) = split_by_idx(
-            val_idxs, np.array(fnames), y
+        val_idxs = get_idxs_for_validation_split(len(image_filenames)) if val_idxs is None else val_idxs
+        ((val_image_filenames, trn_image_filenames), (val_y, trn_y)) = split_by_idx(
+            val_idxs, np.array(image_filenames), y
         )
 
-        test_fnames = read_dir(path, test_name) if test_name else None
+        test_image_filenames = read_dir(path, test_name) if test_name else None
         if continuous:
             f = FilesIndexArrayRegressionDataset
         else:
             f = FilesIndexArrayDataset if len(
                 trn_y.shape
-            ) == 1 else FilesNhotArrayDataset
-        datasets = cls.get_ds(
+            ) == 1 else FilesnhotArrayDataset
+        datasets = cls.get_dataset(
             f,
-            (trn_fnames, trn_y),
-            (val_fnames, val_y),
-            tfms,
+            (trn_image_filenames, trn_y),
+            (val_image_filenames, val_y),
+            transformations,
             path=path,
-            test=test_fnames,
+            test=test_image_filenames,
         )
         return cls(path, datasets, batch_size, num_workers, classes=classes)
 
