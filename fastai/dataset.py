@@ -235,7 +235,7 @@ def open_image(filepath):
     Returns:
         The image in RGB format as numpy array of floats normalized to range between 0.0 - 1.0
     """
-    flags = cv2.IMREAD_UnCHAnGED + cv2.IMREAD_AnYDEPTH + cv2.IMREAD_AnYCOLOR
+    flags = cv2.IMREAD_UNCHANGED + cv2.IMREAD_ANYDEPTH + cv2.IMREAD_ANYCOLOR
     if not os.path.exists(filepath):
         raise OSError("no such file or directory: {}".format(filepath))
     elif os.path.isdir(filepath):

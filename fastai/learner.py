@@ -170,7 +170,7 @@ class Learner():
         layer_opt,
         cycle_count,
         cycle_length=None,
-        cycle_multiplier=1,
+        cycle_mult=1,
         cycle_save_name=None,
         best_save_name=None,
         use_cyclic_learning_rate=None,
@@ -191,7 +191,7 @@ class Learner():
         scheduler for varying the learning rate across iterations.
 
         Method also computes the total number of epochs to fit based on provided 'cycle_length',
-        'cycle_multiplier', and 'cycle_count' parameters.
+        'cycle_mult', and 'cycle_count' parameters.
 
         Args:
             model (Learner):  Any neural architecture for solving a supported problem.
@@ -205,11 +205,11 @@ class Learner():
 
             cycle_length (int):  number of epochs before the learning rateis reset to the initial value.
                 E.g if cycle_length = 3, then the learning rate is varied between a maximum
-                and minimum value over 3 epochs.  See also cycle_multiplieriplier below.
+                and minimum value over 3 epochs.  See also cycle_mult below.
 
-            cycle_multiplier (int): an additional multiplier which varies the number of epochs per 
+            cycle_mult (int): an additional multiplier which varies the number of epochs per 
                 cycle.  The number of epochs will vary linearaly from 1*cycle_length to 
-                cycle_multiplier*cycle_length.   There will still be cycle_count cycles.
+                cycle_mult*cycle_length.   There will still be cycle_count cycles.
                 For an intuitive explanation, please see
                 https://github.com/fastai/fastai/blob/master/courses/dl1/lesson1.ipynb
 
@@ -285,7 +285,7 @@ class Learner():
                 layer_opt,
                 batch_per_epoch,
                 cl,
-                cycle_multiplier,
+                cycle_mult,
                 cycle_count,
                 norm_wds,
                 wds_sched_mult,
@@ -299,7 +299,7 @@ class Learner():
             self.sched = CircularLR(
                 layer_opt,
                 len(data.training_downloader) * cycle_length,
-                ocycle_count_end=cycle_end,
+                on_cycle_end=cycle_end,
                 div=clr_div,
                 cut_div=cut_div,
                 momentums=moms,
@@ -311,7 +311,7 @@ class Learner():
             self.sched = CircularLR_beta(
                 layer_opt,
                 len(data.training_downloader) * cycle_length,
-                ocycle_count_end=cycle_end,
+                cycle_end=cycle_end,
                 div=div,
                 pct=pct,
                 momentums=moms,
@@ -322,8 +322,8 @@ class Learner():
             self.sched = CosAnneal(
                 layer_opt,
                 cycle_batches,
-                ocycle_count_end=cycle_end,
-                cycle_multiplier=cycle_multiplier,
+                on_cycle_end=cycle_end,
+                cycle_mult=cycle_mult,
             )
         elif not self.sched:
             self.sched = LossRecorder(layer_opt)
@@ -340,7 +340,7 @@ class Learner():
             callbacks += [SWA(model, self.swa_model, swa_start)]
 
         n_epoch = int(
-            sum_geom(cycle_length if cycle_length else 1, cycle_multiplier, cycle_count)
+            sum_geom(cycle_length if cycle_length else 1, cycle_mult, cycle_count)
         )
         return fit(
             model,
